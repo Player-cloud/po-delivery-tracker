@@ -1,0 +1,52 @@
+# Daily PO delivery reminder pass (PRD §10, M1).
+#
+# This is the production scheduler: it calls the backend's protected
+# POST /api/v1/internal/run-reminders once a day. Nothing runs inside the API
+# process, so this works even when the backend has scaled to zero — the call
+# itself wakes it.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   BACKEND_BASE_URL   e.g. https://po-tracker-api.onrender.com   (no trailing slash)
+#   CRON_SECRET        must match the backend's CRON_SECRET env var
+#
+# GitHub cron is UTC and may lag the scheduled minute by a few minutes — fine
+# for a once-a-day job. Adjust the time below to suit the team's timezone.
+
+name: Daily PO reminders
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # 07:00 UTC daily
+  workflow_dispatch: {} # allow a manual run from the Actions tab
+
+concurrency:
+  group: po-reminders
+  cancel-in-progress: false
+
+jobs:
+  run-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminder run
+        env:
+          BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BACKEND_BASE_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::BACKEND_BASE_URL and CRON_SECRET repository secrets must be set"
+            exit 1
+          fi
+          code=$(curl -sS --max-time 300 --retry 2 --retry-delay 30 \
+            -o /tmp/response.json -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            "${BACKEND_BASE_URL%/}/api/v1/internal/run-reminders")
+          echo "HTTP ${code}"
+          cat /tmp/response.json || true
+          echo
+          if [ "${code}" != "200" ]; then
+            echo "::error::run-reminders returned HTTP ${code}"
+            exit 1
+          fi

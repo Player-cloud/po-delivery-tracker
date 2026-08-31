@@ -2,6 +2,7 @@
 
 Free tier: 300 emails/day. Needs `BREVO_API_KEY` and a verified sender.
 """
+
 from __future__ import annotations
 
 import httpx

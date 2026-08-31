@@ -8,9 +8,10 @@ without this, `from app.models.po_line import POLine` alone would leave
 import with user.py) unregistered, and the first POLine(...) you construct
 would fail to resolve it.
 """
-from app.models.user import User  # noqa: F401
-from app.models.po_line import POLine  # noqa: F401
+
 from app.models.attachment import Attachment  # noqa: F401
-from app.models.notification_history import NotificationHistory  # noqa: F401
 from app.models.configuration import Configuration  # noqa: F401
 from app.models.deletion_request import DeletionRequest  # noqa: F401
+from app.models.notification_history import NotificationHistory  # noqa: F401
+from app.models.po_line import POLine  # noqa: F401
+from app.models.user import User  # noqa: F401

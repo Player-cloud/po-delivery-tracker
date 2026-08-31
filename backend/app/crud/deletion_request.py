@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -33,7 +33,9 @@ def get_deletion_request(db: Session, request_id: int) -> DeletionRequest | None
     return db.get(DeletionRequest, request_id)
 
 
-def create_deletion_request(db: Session, po_line: POLine, reason: str, current_user: User) -> DeletionRequest:
+def create_deletion_request(
+    db: Session, po_line: POLine, reason: str, current_user: User
+) -> DeletionRequest:
     existing = db.scalar(
         select(DeletionRequest).where(
             DeletionRequest.po_line_id == po_line.id,
@@ -77,7 +79,7 @@ def approve_deletion_request(
 
     request.status = DeletionRequestStatus.APPROVED
     request.reviewed_by_id = current_user.id
-    request.reviewed_at = datetime.now(timezone.utc)
+    request.reviewed_at = datetime.now(UTC)
     request.resolution_notes = resolution_notes
     db.commit()
     db.refresh(request)
@@ -92,7 +94,7 @@ def reject_deletion_request(
 
     request.status = DeletionRequestStatus.REJECTED
     request.reviewed_by_id = current_user.id
-    request.reviewed_at = datetime.now(timezone.utc)
+    request.reviewed_at = datetime.now(UTC)
     request.resolution_notes = resolution_notes
     db.commit()
     db.refresh(request)

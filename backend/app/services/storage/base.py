@@ -13,6 +13,7 @@ Pick one with `app.services.storage.get_storage()`, which reads
 A `key` is an opaque forward-slash path the CRUD generates
 (`po_lines/<id>/<uuid>_<name>`); the backend maps it to a file or an object.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -24,12 +25,10 @@ class StorageError(Exception):
 
 class Storage(ABC):
     @abstractmethod
-    def save(self, key: str, data: bytes, content_type: str | None = None) -> None:
-        ...
+    def save(self, key: str, data: bytes, content_type: str | None = None) -> None: ...
 
     @abstractmethod
-    def load(self, key: str) -> bytes:
-        ...
+    def load(self, key: str) -> bytes: ...
 
     @abstractmethod
     def delete(self, key: str) -> None:

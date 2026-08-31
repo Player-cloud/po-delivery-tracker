@@ -10,6 +10,7 @@ class, so the same scheduler logic runs unchanged in every environment (PRD §10
 Pick one with `app.services.notifications.get_notification_sender()`, which reads
 `settings.email_backend`.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

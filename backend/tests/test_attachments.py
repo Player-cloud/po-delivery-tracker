@@ -1,4 +1,5 @@
 """PO line attachments (M3, FR-4) — upload / list / download / delete + validation."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -37,7 +38,9 @@ def line(users, make_line):
     return make_line(due_in_days=10, assigned_to=users["alice"])
 
 
-def _upload(client, line_id, name="invoice.pdf", content=b"%PDF-1.4 hello", ctype="application/pdf"):
+def _upload(
+    client, line_id, name="invoice.pdf", content=b"%PDF-1.4 hello", ctype="application/pdf"
+):
     return client.post(
         f"/api/v1/po-lines/{line_id}/attachments",
         files={"file": (name, content, ctype)},
@@ -62,7 +65,9 @@ class TestUpload:
         assert any(f.is_file() and f.read_bytes() == b"%PDF-1.4 hello" for f in files)
 
     def test_rejects_disallowed_extension(self, client_as, users, line):
-        r = _upload(client_as(users["alice"]), line.id, name="malware.exe", ctype="application/octet-stream")
+        r = _upload(
+            client_as(users["alice"]), line.id, name="malware.exe", ctype="application/octet-stream"
+        )
         assert r.status_code == 400
         assert "not allowed" in r.json()["detail"]
 
@@ -77,7 +82,9 @@ class TestUpload:
         assert r.status_code == 400
 
     def test_filename_is_sanitised(self, client_as, users, line, db):
-        r = _upload(client_as(users["alice"]), line.id, name="../../etc/pa ss wd.txt", ctype="text/plain")
+        r = _upload(
+            client_as(users["alice"]), line.id, name="../../etc/pa ss wd.txt", ctype="text/plain"
+        )
         assert r.status_code == 201
         row = db.get(Attachment, r.json()["id"])
         assert "/" not in row.file_name and "\\" not in row.file_name
@@ -115,7 +122,9 @@ class TestVisibility:
     def test_staff_cannot_touch_another_staffs_line(self, db, client_as, users, make_line):
         from app.models.user import User, UserRole
 
-        carol = User(email="carol@corp.example", password_hash="x", role=UserRole.STAFF, active=True)
+        carol = User(
+            email="carol@corp.example", password_hash="x", role=UserRole.STAFF, active=True
+        )
         db.add(carol)
         db.commit()
 
@@ -132,8 +141,12 @@ class TestVisibility:
 
         line = make_line(due_in_days=10, assigned_to=users["alice"])
         attachment_crud.create_attachment(
-            db, line, file_name="a.txt", content_type="text/plain",
-            data=b"bytes", uploader=users["alice"],
+            db,
+            line,
+            file_name="a.txt",
+            content_type="text/plain",
+            data=b"bytes",
+            uploader=users["alice"],
         )
         assert len(attachment_crud.list_attachments(db, line.id)) == 1
 

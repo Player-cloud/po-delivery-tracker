@@ -14,7 +14,7 @@ class DashboardSummary(BaseModel):
     due_today: int
     due_this_week: int
     due_soon: int  # 1..7 days out (this-week, excluding today and overdue)
-    later: int     # more than 7 days out
+    later: int  # more than 7 days out
     overdue: int
     completed: int
     high_priority: int

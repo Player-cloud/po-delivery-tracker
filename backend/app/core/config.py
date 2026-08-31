@@ -5,7 +5,9 @@ All environment-specific values (DB connection, secrets, storage backend, etc.)
 are read here and nowhere else, so switching from local dev to production is a
 config change, not a code change.
 """
+
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,7 +23,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/po_tracking"
 
     # --- Auth ---
-    secret_key: str = "change-me-in-.env"  # noqa: S105 (dev default only)
+    secret_key: str = "change-me-in-.env"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
@@ -30,15 +32,25 @@ class Settings(BaseSettings):
     local_upload_dir: str = "./uploads"
     # S3-compatible (Cloudflare R2 in production). Only read when storage_backend=s3.
     s3_bucket: str = "po-tracker-attachments"
-    s3_endpoint_url: str | None = None          # e.g. https://<acct>.r2.cloudflarestorage.com
-    s3_region: str = "auto"                     # R2 uses "auto"
+    s3_endpoint_url: str | None = None  # e.g. https://<acct>.r2.cloudflarestorage.com
+    s3_region: str = "auto"  # R2 uses "auto"
     s3_access_key_id: str | None = None
     s3_secret_access_key: str | None = None
     # Upload limits (PRD §14 Q6 — interim defaults, configurable without a deploy).
     attachment_max_bytes: int = 10 * 1024 * 1024  # 10 MB
     attachment_allowed_extensions: list[str] = [
-        "pdf", "png", "jpg", "jpeg", "gif", "webp",
-        "doc", "docx", "xls", "xlsx", "csv", "txt",
+        "pdf",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "webp",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "csv",
+        "txt",
     ]
 
     # --- Email ---
@@ -57,7 +69,7 @@ class Settings(BaseSettings):
     default_reminder_thresholds_days: list[int] = [30, 60, 90]
     # Shared secret the daily scheduler must present as `Authorization: Bearer <...>`
     # to call POST /internal/run-reminders. Override in every real environment.
-    cron_secret: str = "dev-cron-secret-change-me"  # noqa: S105 (dev default only)
+    cron_secret: str = "dev-cron-secret-change-me"
     # Base URL of the frontend, used to build the "open this PO line" link in emails.
     frontend_base_url: str = "http://localhost:3000"
     # Safety-net recipient for a line that still has no active assignee despite

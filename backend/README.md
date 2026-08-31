@@ -78,13 +78,20 @@ curl -X POST http://localhost:8000/api/v1/internal/run-reminders \
 and the other reminder settings are in `.env.example`. In production a GitHub
 Actions workflow (`.github/workflows/reminders.yml`) makes this call daily.
 
-**Tests:**
+## 6. Checks (M5)
+
+The same checks CI runs (`.github/workflows/ci.yml`):
 
 ```bash
-python -m pytest tests/
+ruff check .            # lint
+ruff format --check .   # formatting (drop --check to apply)
+pytest                  # 83 tests, SQLite-backed, no services needed
 ```
 
-## 6. Attachments (M3)
+Config lives in `pyproject.toml`. A separate CI job runs `alembic upgrade head`
+then `alembic downgrade base` against a real Postgres to catch migration drift.
+
+## 7. Attachments (M3)
 
 Files attach per PO line via `/api/v1/po-lines/{id}/attachments` (upload / list /
 download / delete). Bytes live behind `app/services/storage/`:
@@ -96,6 +103,6 @@ download / delete). Bytes live behind `app/services/storage/`:
 
 Upload limits: `ATTACHMENT_MAX_BYTES` (10 MB) and `ATTACHMENT_ALLOWED_EXTENSIONS`.
 
-## 7. Next
+## 8. Next
 
-M4 — admin screens (alert-threshold config, user management).
+M6 — production deployment (Vercel + Render + Neon + R2).

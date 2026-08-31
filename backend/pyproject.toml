@@ -1,0 +1,42 @@
+[project]
+name = "po-tracker-backend"
+version = "0.1.0"
+description = "PO Delivery Tracker — FastAPI backend"
+requires-python = ">=3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = ["alembic/versions", ".venv", "venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "RUF"]
+ignore = [
+    "E501",   # long lines — not worth failing CI over
+    "E741",   # `l` as a loop var — the codebase uses it for "line" consistently
+    "RUF012", # mutable class defaults — Pydantic/SQLAlchemy models rely on them
+    "UP042",  # (str, Enum) -> StrEnum changes str() semantics; the ORM depends on the current behaviour
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# These markers are meant to be *called* in argument defaults.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.File",
+    "fastapi.Form",
+    "app.core.deps.require_roles",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["T201"]        # print() is fine in CLI scripts
+"tests/*" = ["B011"]          # asserts
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "scripts", "tests"]

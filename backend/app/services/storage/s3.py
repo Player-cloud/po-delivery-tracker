@@ -4,6 +4,7 @@ R2 speaks the S3 API, so `boto3` works with a custom `endpoint_url` and
 region `auto`. Needs `S3_BUCKET`, `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`,
 `S3_SECRET_ACCESS_KEY`.
 """
+
 from __future__ import annotations
 
 from app.core.config import get_settings

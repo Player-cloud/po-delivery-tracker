@@ -8,6 +8,7 @@ guarded by a shared secret rather than a JWT: the caller must send
 Actions scheduled workflow; in dev it's a manual curl or `python -m
 scripts.run_reminders`.
 """
+
 import hmac
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -29,7 +30,7 @@ def verify_cron_secret(authorization: str | None = Header(default=None)) -> None
     expected = settings.cron_secret
     provided = ""
     if authorization and authorization.startswith(_BEARER_PREFIX):
-        provided = authorization[len(_BEARER_PREFIX):]
+        provided = authorization[len(_BEARER_PREFIX) :]
 
     if not expected or not provided or not hmac.compare_digest(provided, expected):
         raise HTTPException(

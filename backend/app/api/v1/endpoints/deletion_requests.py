@@ -7,7 +7,11 @@ from app.crud import po_line as po_line_crud
 from app.crud.deletion_request import DuplicatePendingRequestError, InvalidStatusTransitionError
 from app.db.session import get_db
 from app.models.user import User, UserRole
-from app.schemas.deletion_request import DeletionRequestCreate, DeletionRequestOut, DeletionRequestReview
+from app.schemas.deletion_request import (
+    DeletionRequestCreate,
+    DeletionRequestOut,
+    DeletionRequestReview,
+)
 
 router = APIRouter(tags=["deletion-requests"])
 
@@ -29,7 +33,9 @@ def request_deletion(
     if po_line is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PO line not found")
     if current_user.role == UserRole.STAFF and po_line.assigned_to_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this PO line")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this PO line"
+        )
 
     try:
         return dr_crud.create_deletion_request(db, po_line, data.reason, current_user)
@@ -55,7 +61,9 @@ def approve_deletion_request(
 ):
     request = dr_crud.get_deletion_request(db, request_id)
     if request is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deletion request not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Deletion request not found"
+        )
     try:
         return dr_crud.approve_deletion_request(db, request, current_user, data.resolution_notes)
     except InvalidStatusTransitionError as exc:
@@ -71,7 +79,9 @@ def reject_deletion_request(
 ):
     request = dr_crud.get_deletion_request(db, request_id)
     if request is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deletion request not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Deletion request not found"
+        )
     try:
         return dr_crud.reject_deletion_request(db, request, current_user, data.resolution_notes)
     except InvalidStatusTransitionError as exc:

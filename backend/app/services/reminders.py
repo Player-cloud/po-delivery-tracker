@@ -19,6 +19,7 @@ One pass:
 Delivered lines fall out of step 1 automatically — that's the stop condition
 (FR-12), no explicit "cancel" needed.
 """
+
 from __future__ import annotations
 
 import logging
@@ -47,8 +48,8 @@ settings = get_settings()
 class ReminderDecision:
     """What to tell someone about one line, right now."""
 
-    label: str          # de-dupe key for notification_history
-    phrase: str         # human phrase for the subject line, e.g. "is due in 7 days"
+    label: str  # de-dupe key for notification_history
+    phrase: str  # human phrase for the subject line, e.g. "is due in 7 days"
     days_remaining: int
     escalate: bool = False  # overdue past the escalation window -> route to the escalation address
 
@@ -79,9 +80,7 @@ def choose_reminder(
         )
 
     if days_remaining == 0:
-        return ReminderDecision(
-            label="due_today", phrase="is due today", days_remaining=0
-        )
+        return ReminderDecision(label="due_today", phrase="is due today", days_remaining=0)
 
     # days_remaining > 0: has the line entered any configured pre-due window yet?
     passed = [t for t in thresholds_days if t > 0 and t >= days_remaining]

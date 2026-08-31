@@ -4,6 +4,7 @@ to do what they're asking. Every route that needs auth pulls from here, so
 there's exactly one place that decides what a valid token/role looks like
 (System Design §6).
 """
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session

@@ -4,6 +4,7 @@ Focus is `choose_reminder` — the pure decision logic that decides which single
 reminder label applies to a line on a given day. The DB orchestration in
 `run_reminders` is thin glue over this plus `notification_history` de-dup.
 """
+
 from datetime import date
 from types import SimpleNamespace
 
@@ -54,7 +55,9 @@ class TestChooseReminderPreDue:
 class TestChooseReminderDueToday:
     def test_due_today(self):
         decision = choose_reminder(0, THRESHOLDS, TODAY)
-        assert decision == ReminderDecision(label="due_today", phrase="is due today", days_remaining=0)
+        assert decision == ReminderDecision(
+            label="due_today", phrase="is due today", days_remaining=0
+        )
 
     def test_due_today_fires_even_if_no_threshold_window_configured(self):
         assert choose_reminder(0, [], TODAY).label == "due_today"
@@ -154,8 +157,15 @@ class TestMessageBody:
         msg = _build_message(line, decision, "a@corp.test")
 
         assert msg.subject == "PO ABC123 - Line 4 is due in 7 days"
-        for fragment in ("ABC123", "2026-08-01", "2026-09-07", "37", "Upcoming",
-                         "owner@corp.test", "https://po.corp.test/po-lines/42/edit"):
+        for fragment in (
+            "ABC123",
+            "2026-08-01",
+            "2026-09-07",
+            "37",
+            "Upcoming",
+            "owner@corp.test",
+            "https://po.corp.test/po-lines/42/edit",
+        ):
             assert fragment in msg.text_body
 
     def test_escalated_message_is_marked_and_explained(self, monkeypatch):
@@ -163,9 +173,13 @@ class TestMessageBody:
 
         monkeypatch.setattr(reminders.settings, "frontend_base_url", "http://x")
         line = SimpleNamespace(
-            id=1, po_number="P", po_line=1,
-            issue_date=date(2026, 8, 1), promised_delivery=date(2026, 8, 20),
-            lead_time_days=19, status=SimpleNamespace(value="Overdue"),
+            id=1,
+            po_number="P",
+            po_line=1,
+            issue_date=date(2026, 8, 1),
+            promised_delivery=date(2026, 8, 20),
+            lead_time_days=19,
+            status=SimpleNamespace(value="Overdue"),
             assigned_to=SimpleNamespace(email="owner@corp.test"),
         )
         decision = choose_reminder(-11, THRESHOLDS, TODAY, overdue_escalation_days=7)

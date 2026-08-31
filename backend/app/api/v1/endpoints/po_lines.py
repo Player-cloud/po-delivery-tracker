@@ -14,7 +14,9 @@ router = APIRouter(prefix="/po-lines", tags=["po-lines"])
 def _assert_staff_can_touch(po_line, current_user: User) -> None:
     """Staff may only read/edit lines assigned to them (see crud.po_line._visible_to)."""
     if current_user.role == UserRole.STAFF and po_line.assigned_to_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this PO line")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this PO line"
+        )
 
 
 @router.get("", response_model=list[POLineOut])
@@ -44,7 +46,9 @@ def get_po_line(
 def create_po_line(
     data: POLineCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMINISTRATOR)),
+    current_user: User = Depends(
+        require_roles(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMINISTRATOR)
+    ),
 ):
     try:
         return po_line_crud.create_po_line(db, data, current_user)
@@ -59,7 +63,9 @@ def update_po_line(
     po_line_id: int,
     data: POLineUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMINISTRATOR)),
+    current_user: User = Depends(
+        require_roles(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMINISTRATOR)
+    ),
 ):
     po_line = po_line_crud.get_po_line(db, po_line_id)
     if po_line is None:

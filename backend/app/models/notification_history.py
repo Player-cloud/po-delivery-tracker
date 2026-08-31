@@ -35,4 +35,6 @@ class NotificationHistory(Base):
     po_line = relationship("POLine", back_populates="notifications")
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<NotificationHistory po_line_id={self.po_line_id} threshold={self.threshold_label!r}>"
+        return (
+            f"<NotificationHistory po_line_id={self.po_line_id} threshold={self.threshold_label!r}>"
+        )

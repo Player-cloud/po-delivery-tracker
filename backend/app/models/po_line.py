@@ -85,12 +85,16 @@ class POLine(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    assigned_to = relationship("User", foreign_keys=[assigned_to_id], back_populates="assigned_po_lines")
+    assigned_to = relationship(
+        "User", foreign_keys=[assigned_to_id], back_populates="assigned_po_lines"
+    )
     created_by = relationship("User", foreign_keys=[created_by_id])
     modified_by = relationship("User", foreign_keys=[modified_by_id])
 
     attachments = relationship("Attachment", back_populates="po_line", cascade="all, delete-orphan")
-    notifications = relationship("NotificationHistory", back_populates="po_line", cascade="all, delete-orphan")
+    notifications = relationship(
+        "NotificationHistory", back_populates="po_line", cascade="all, delete-orphan"
+    )
 
     # ---- computed, never stored ----
 
@@ -100,7 +104,7 @@ class POLine(Base):
         return (self.promised_delivery - date.today()).days
 
     @days_remaining.expression
-    def days_remaining(cls):  # noqa: N805
+    def days_remaining(cls):
         """SQL-side expression, used when filtering/sorting/ordering in a query,
         e.g. `session.query(POLine).filter(POLine.days_remaining <= 7)`.
         Postgres date subtraction already returns an integer number of days,
@@ -119,7 +123,7 @@ class POLine(Base):
         return Status.UPCOMING
 
     @status.expression
-    def status(cls):  # noqa: N805
+    def status(cls):
         remaining = cls.days_remaining
         return case(
             (cls.delivered.is_(True), Status.DELIVERED.value),

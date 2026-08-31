@@ -2,6 +2,7 @@
 Data-access layer for PO lines. Route handlers (app.api.v1.endpoints.po_lines)
 stay thin and just call into here — keeps business rules in one testable place.
 """
+
 from datetime import date, timedelta
 
 from sqlalchemy import select
@@ -23,9 +24,7 @@ class InvalidAssigneeError(Exception):
 def _validate_assignee(db: Session, assigned_to_id: int) -> None:
     user = db.get(User, assigned_to_id)
     if user is None or not user.active:
-        raise InvalidAssigneeError(
-            f"assigned_to_id {assigned_to_id} is not an active user"
-        )
+        raise InvalidAssigneeError(f"assigned_to_id {assigned_to_id} is not an active user")
 
 
 def get_po_line(db: Session, po_line_id: int) -> POLine | None:
@@ -70,7 +69,9 @@ def create_po_line(db: Session, data: POLineCreate, current_user: User) -> POLin
 
     _validate_assignee(db, data.assigned_to_id)
 
-    po_line = POLine(**data.model_dump(), created_by_id=current_user.id, modified_by_id=current_user.id)
+    po_line = POLine(
+        **data.model_dump(), created_by_id=current_user.id, modified_by_id=current_user.id
+    )
     db.add(po_line)
     db.commit()
     db.refresh(po_line)
@@ -110,12 +111,16 @@ def dashboard_summary(db: Session, current_user: User) -> dict:
     return {
         "total_open": len(open_lines),
         "due_today": sum(1 for l in open_lines if l.status == Status.DUE_TODAY),
-        "due_this_week": sum(1 for l in open_lines if today <= l.promised_delivery <= week_from_now),
+        "due_this_week": sum(
+            1 for l in open_lines if today <= l.promised_delivery <= week_from_now
+        ),
         "due_soon": sum(1 for l in open_lines if 1 <= l.days_remaining <= 7),
         "later": sum(1 for l in open_lines if l.days_remaining > 7),
         "overdue": sum(1 for l in open_lines if l.status == Status.OVERDUE),
         "completed": sum(1 for l in lines if l.delivered),
-        "high_priority": sum(1 for l in open_lines if l.priority is not None and l.priority.value == "high"),
+        "high_priority": sum(
+            1 for l in open_lines if l.priority is not None and l.priority.value == "high"
+        ),
     }
 
 
@@ -136,8 +141,6 @@ def attention_lines(
     due — capped at `limit`. Same visibility rules as the list view.
     """
     lines = list_po_lines(db, current_user)
-    attention = [
-        l for l in lines if not l.delivered and l.days_remaining <= within_days
-    ]
+    attention = [l for l in lines if not l.delivered and l.days_remaining <= within_days]
     attention.sort(key=lambda l: l.days_remaining)
     return attention[:limit]

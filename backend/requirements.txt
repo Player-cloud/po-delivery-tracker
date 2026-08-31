@@ -15,3 +15,4 @@ boto3>=1.34.0          # S3-compatible attachment storage (Cloudflare R2); only 
 
 # dev/test only
 pytest>=8.3.3
+ruff>=0.16.0

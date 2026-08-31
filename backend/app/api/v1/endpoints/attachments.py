@@ -1,5 +1,6 @@
 """PO line attachments (M3, FR-4). Files stream to `Storage` (local disk in dev,
 Cloudflare R2 in prod); the DB keeps the metadata."""
+
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -26,7 +27,9 @@ def _get_line_or_404(db: Session, po_line_id: int):
 
 def _assert_can_see(po_line, user: User) -> None:
     if user.role == UserRole.STAFF and po_line.assigned_to_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this PO line")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this PO line"
+        )
 
 
 @router.get("", response_model=list[AttachmentOut])
@@ -85,7 +88,9 @@ def download_attachment(
     try:
         data = attachment_crud.load_bytes(row)
     except StorageError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blob missing from storage") from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Blob missing from storage"
+        ) from exc
 
     return Response(
         content=data,

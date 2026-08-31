@@ -5,6 +5,7 @@ SQLite is close enough for the reminder engine: the engine only reads `delivered
 and does date math in Python, so the Postgres-specific bits (generated
 `lead_time_days`, SQL `days_remaining` expression) are never exercised here.
 """
+
 from datetime import date, timedelta
 
 import pytest
@@ -12,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db.base import Base  # noqa: F401 — registers every model on Base.metadata
+from app.db.base import Base
 from app.models.po_line import POLine, Priority
 from app.models.user import User, UserRole
 

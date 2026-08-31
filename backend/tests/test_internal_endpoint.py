@@ -1,4 +1,5 @@
 """Auth + wiring tests for POST /api/v1/internal/run-reminders."""
+
 import pytest
 from fastapi.testclient import TestClient
 

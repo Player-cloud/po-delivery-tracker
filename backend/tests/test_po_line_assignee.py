@@ -1,4 +1,5 @@
 """Assigned To is a required field (PRD §14 Q2): schema-level and CRUD-level checks."""
+
 from datetime import date, timedelta
 
 import pytest
@@ -15,12 +16,14 @@ TODAY_ISO = date.today().isoformat()
 
 class TestSchema:
     def _base(self, **over):
-        data = dict(
-            po_number="PO1", po_line=1, issue_date=TODAY_ISO,
-            promised_delivery=FUTURE, assigned_to_id=1,
-        )
-        data.update(over)
-        return data
+        return {
+            "po_number": "PO1",
+            "po_line": 1,
+            "issue_date": TODAY_ISO,
+            "promised_delivery": FUTURE,
+            "assigned_to_id": 1,
+            **over,
+        }
 
     def test_create_requires_assigned_to_id(self):
         payload = self._base()
@@ -59,8 +62,11 @@ class TestCrudValidation:
 
     def _create(self, db, user, assigned_to_id):
         data = POLineCreate(
-            po_number="POX", po_line=1, issue_date=TODAY_ISO,
-            promised_delivery=FUTURE, assigned_to_id=assigned_to_id,
+            po_number="POX",
+            po_line=1,
+            issue_date=TODAY_ISO,
+            promised_delivery=FUTURE,
+            assigned_to_id=assigned_to_id,
         )
         return po_line_crud.create_po_line(db, data, user)
 

@@ -6,6 +6,7 @@ metadata; the bytes live in `Storage` (local disk in dev, R2 in prod). Uploads
 are validated here — extension allowlist + size cap, both configurable
 (`settings.attachment_*`, PRD §14 Q6).
 """
+
 from __future__ import annotations
 
 import re

@@ -1,4 +1,5 @@
 """GET /users/assignable — the picker feed for the PO line 'Assigned To' field."""
+
 import pytest
 from fastapi.testclient import TestClient
 

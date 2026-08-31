@@ -6,6 +6,7 @@ so the very first user has to be created directly like this.
 Usage (from backend/, with venv active and .env configured):
     python -m scripts.seed_admin
 """
+
 from getpass import getpass
 
 from app.core.security import hash_password
@@ -24,7 +25,9 @@ def main() -> None:
             print(f"A user with email {email} already exists (id={existing.id}). Nothing to do.")
             return
 
-        admin = User(email=email, password_hash=hash_password(password), role=UserRole.ADMINISTRATOR)
+        admin = User(
+            email=email, password_hash=hash_password(password), role=UserRole.ADMINISTRATOR
+        )
         db.add(admin)
         db.commit()
         print(f"Created administrator {email} (id={admin.id}).")

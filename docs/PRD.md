@@ -1,7 +1,7 @@
 # PO Delivery Tracker — Product Requirements Document
 
 **Version:** 2.2 — Approved
-**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1–M4 built and tested (notifications + §14 Q2/Q3, dashboard & list UI, attachments, admin screens); frontend lint cleanup done; project pushed to a private GitHub monorepo (§17). Next: M5 (test suite + CI), M6 (deploy).
+**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1–M5 built and tested (notifications + §14 Q2/Q3, dashboard & list UI, attachments, admin screens, CI); private GitHub monorepo (§17) with CI on every push. Next: M6 (deploy — resolve §14 Q10/Q11 first).
 **Supersedes:** the original SharePoint proposal (executive-summary Word doc), and consolidates `SRS.md` + `SYSTEM_DESIGN.md` (v0.1 drafts) with a direct audit of this repository as it stood on 31 Aug 2026.
 **Repository:** https://github.com/Player-cloud/po-delivery-tracker (private) · single monorepo: `backend/`, `frontend/`, `docs/`, `.github/`. Setup steps in §17.
 **Companion wireframes:** https://claude.ai/code/artifact/846dade2-b771-45bc-bbae-1904c6e02f96
@@ -74,7 +74,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | User management — admin UI | `[DONE]` | M4 — `/admin/users`: list, create, change role, activate/deactivate, reset password; can't lock yourself out |
 | Audit trail (created/modified by + when) | `[DONE]` | Enforced at the ORM layer |
 | Deletion audit trail | `[DONE]` | New since the last design pass — see §11 |
-| Automated tests / CI | `[GAP]` | No test suite or pipeline found in the repo |
+| Automated tests / CI | `[DONE]` | M5 — 83 backend tests + 8 frontend unit tests; `.github/workflows/ci.yml` runs ruff + pytest + a Postgres migration up/down + frontend typecheck/lint/test/build on every push and PR |
 | Cloud deployment / infra | `[GAP]` | `infra/` exists but is empty; target stack is Vercel + Render + Neon + R2 (§13) |
 | SSO (Microsoft Entra ID) | `[PROPOSED]` | Designed for, not started |
 | Power BI reporting connection | `[PROPOSED]` | Nothing blocks it; not yet configured or tested |
@@ -118,7 +118,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | NFR-2 | Production deployment targets 99% uptime | `[PROPOSED]` — no prod env yet; free-tier hosts sleep on idle (they wake on request, but the first hit is slow) — 99% *availability* holds, sub-2s *latency* does not without a paid always-on tier |
 | NFR-3 | Secrets never committed; prod secrets held in the host's environment-variable store | `[PARTIAL]` — `.env` gitignored locally; Vercel / Render env vars used in prod, no secret manager needed at this scale |
 | NFR-4 | Schema normalized for future growth without redesign | `[DONE]` |
-| NFR-5 | Automated tests, run in CI on every push | `[GAP]` |
+| NFR-5 | Automated tests, run in CI on every push | `[DONE]` — `ci.yml`: backend lint+tests, migration up/down on Postgres, frontend typecheck/lint/test/build |
 | NFR-6 | Full app runs locally via `docker compose up`, no cloud dependency | `[DONE]` |
 | NFR-7 | UI and API both validate input; never rely on UI-only checks | `[DONE]` |
 | NFR-8 | Every write attributable to a user + timestamp | `[DONE]` — see FR-21 |
@@ -341,7 +341,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 - **M2 — Dashboard & list UI — DONE (31 Aug 2026).** `GET /dashboard/attention` + a "Needs attention" table and an urgency composition bar on the dashboard (`due_soon`/`later` added to the summary as a clean partition); status filter + debounced PO-number search + colour-coded `StatusBadge` on the PO Lines list; shared `lib/urgency.ts`. Also fixed en route: app pinned to light mode (white-card design was breaking under OS dark mode) and a broken "Request Deletion" link. Column sort deferred. Closes FR-16, FR-17, FR-18.
 - **M3 — Attachments — DONE (31 Aug 2026).** `Storage` abstraction (local disk / S3-compatible R2), upload/list/download/delete endpoints with extension + size validation, and an attachments panel on the Edit screen. Closes FR-4; resolves §14 Q6 (interim). Verified end-to-end (curl + browser) on local disk; R2 path wired but exercised in M6.
 - **M4 — Admin screens — DONE (31 Aug 2026).** `/admin/thresholds` (edit the reminder day-thresholds) and `/admin/users` (create users, change role, activate/deactivate, reset password), both admin-only via a shared `<RequireAdmin>` guard. Backend adds a self-lockout guard on `PUT /users/{id}`. Closes FR-14 and FR-22. Shipped alongside a **frontend cleanup pass**: `useAuth()` via `useSyncExternalStore` (NavBar/guards now react to login-out instantly, incl. cross-tab), every data-fetch effect moved to the cancel-flag pattern (whole frontend passes `eslint` clean), create-next-app cruft removed (real `<title>`, `/` redirects to `/po-lines`), `NEXT_PUBLIC_API_BASE_URL` support in `lib/api.ts`.
-- **M5 — Hardening.** Automated test suite and a CI pipeline running it on every push. Closes NFR-5.
+- **M5 — Hardening — DONE (31 Aug 2026).** `.github/workflows/ci.yml` (push + PR): backend `ruff check` / `ruff format --check` / `pytest` (83 tests), a migrations job that runs `alembic upgrade head` then `downgrade base` on a real Postgres, and a frontend job (`typecheck` / `lint` / `vitest` / `next build`). `ruff` config + `pytest` config in `backend/pyproject.toml`; whole backend `ruff format`-clean. Frontend gains `vitest` with unit tests for `lib/urgency.ts` and `lib/auth.ts`. Closes NFR-5. (Component-level frontend tests — jsdom + testing-library — deferred; noted in `vitest.config.mts`.)
 - **M6 — Production deployment (free-tier stack).** Repo is live at https://github.com/Player-cloud/po-delivery-tracker. Create the Neon database, Cloudflare R2 bucket, and Resend/Brevo sender; deploy the frontend to Vercel and the backend to Render with env vars per §17.5; set the two GitHub repo secrets and `gh workflow enable "Daily PO reminders"`. Resolves §14 Q10–Q11 first.
 - **M7 — stretch.** SSO, Power BI, mobile — pending answers to §14.
 
@@ -362,7 +362,9 @@ po-delivery-tracker/
 ├── backend/          FastAPI + PostgreSQL API (Python 3.13+)
 ├── frontend/         Next.js 16 app (React 19)
 ├── docs/             this PRD + earlier design drafts
-├── .github/workflows/reminders.yml   daily reminder scheduler (disabled until M6)
+├── .github/workflows/
+│     ├── ci.yml        lint + tests + migrations + build, on every push / PR (M5)
+│     └── reminders.yml  daily reminder scheduler (disabled until M6)
 ├── docker-compose.yml   Postgres + Mailhog + api + frontend for local dev
 ├── .gitignore
 └── .gitattributes   forces LF line endings (deploy targets are Linux)
@@ -398,7 +400,7 @@ uvicorn app.main:app --reload                      # http://localhost:8000  (doc
 
 - Mailhog inbox (dev "sent" reminders): http://localhost:8025
 - Run the reminder pass by hand: `python -m scripts.run_reminders`
-- Tests: `python -m pytest tests/` (59 passing as of 31 Aug 2026)
+- Checks (same as CI): `ruff check . && ruff format --check . && pytest` (83 tests)
 
 > Known snag on the original dev machine: the local Postgres volume is stamped at an Alembic revision that isn't in the repo, so `alembic upgrade head` fails there. Fix: `alembic stamp 0003` (schema already matches) or recreate the volume. A fresh clone + fresh DB has no such problem.
 
@@ -410,7 +412,9 @@ npm install
 npm run dev                                        # http://localhost:3000
 ```
 
-Expects the backend at `http://localhost:8000` (see `frontend/lib/api.ts`).
+Expects the backend at `http://localhost:8000` — override with
+`NEXT_PUBLIC_API_BASE_URL` (see `frontend/lib/api.ts`). Checks (same as CI):
+`npm run typecheck && npm run lint && npm test && npm run build`.
 
 ### 17.4 Full stack via Docker
 

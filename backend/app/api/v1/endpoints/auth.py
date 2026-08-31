@@ -27,7 +27,9 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is disabled"
+        )
 
     token = create_access_token(subject=str(user.id), role=user.role.value)
     return Token(access_token=token)

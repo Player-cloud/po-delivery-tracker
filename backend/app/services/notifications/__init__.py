@@ -1,4 +1,5 @@
 """Factory: turn `settings.email_backend` into a concrete NotificationSender."""
+
 from __future__ import annotations
 
 from functools import lru_cache

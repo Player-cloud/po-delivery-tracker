@@ -1,4 +1,5 @@
 """Factory: turn `settings.storage_backend` into a concrete Storage."""
+
 from __future__ import annotations
 
 from functools import lru_cache

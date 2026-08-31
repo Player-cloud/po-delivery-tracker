@@ -1,4 +1,5 @@
 """Dashboard summary partition + /dashboard/attention (M2, FR-15/FR-16)."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -44,8 +45,14 @@ class TestSummary:
     def test_summary_endpoint_shape(self, client):
         body = client.get("/api/v1/dashboard/summary").json()
         assert set(body) == {
-            "total_open", "due_today", "due_this_week", "due_soon",
-            "later", "overdue", "completed", "high_priority",
+            "total_open",
+            "due_today",
+            "due_this_week",
+            "due_soon",
+            "later",
+            "overdue",
+            "completed",
+            "high_priority",
         }
 
 
@@ -56,8 +63,8 @@ class TestAttention:
         assert spread["overdue"].po_number in nums
         assert spread["today"].po_number in nums
         assert spread["soon"].po_number in nums
-        assert spread["later"].po_number not in nums   # 40 days out
-        assert spread["done"].po_number not in nums     # delivered
+        assert spread["later"].po_number not in nums  # 40 days out
+        assert spread["done"].po_number not in nums  # delivered
 
     def test_ordered_most_urgent_first(self, db, users, make_line):
         a = users["alice"]

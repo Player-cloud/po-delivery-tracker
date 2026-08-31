@@ -1,4 +1,5 @@
 """Admin user management (M4) — create/list/update + the lockout guards."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -10,7 +11,9 @@ from app.models.user import User, UserRole
 
 @pytest.fixture
 def admin(db):
-    u = User(email="admin@corp.example", password_hash="x", role=UserRole.ADMINISTRATOR, active=True)
+    u = User(
+        email="admin@corp.example", password_hash="x", role=UserRole.ADMINISTRATOR, active=True
+    )
     db.add(u)
     db.commit()
     return u
@@ -57,7 +60,12 @@ def test_admin_cannot_deactivate_self(client, admin):
 
 
 def test_admin_may_demote_a_different_admin(client, db):
-    other = User(email="other-admin@corp.example", password_hash="x", role=UserRole.ADMINISTRATOR, active=True)
+    other = User(
+        email="other-admin@corp.example",
+        password_hash="x",
+        role=UserRole.ADMINISTRATOR,
+        active=True,
+    )
     db.add(other)
     db.commit()
     # the acting admin (fixture) stays, so this is allowed
@@ -67,4 +75,7 @@ def test_admin_may_demote_a_different_admin(client, db):
 
 
 def test_admin_may_still_change_own_password(client, admin):
-    assert client.put(f"/api/v1/users/{admin.id}", json={"password": "newsecret123"}).status_code == 200
+    assert (
+        client.put(f"/api/v1/users/{admin.id}", json={"password": "newsecret123"}).status_code
+        == 200
+    )

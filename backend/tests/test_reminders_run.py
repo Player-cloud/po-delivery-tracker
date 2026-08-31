@@ -2,6 +2,7 @@
 including notification_history de-dup, the per-run email cap, delivered-line
 exclusion, and the no-recipient / send-failure paths.
 """
+
 from datetime import date, timedelta
 
 import pytest
@@ -154,7 +155,9 @@ class TestOverdueEscalation:
         assert second.skipped_already_sent == 1
         assert len(fake_sender.sent) == 1
 
-    def test_transition_from_assignee_to_escalation_across_days(self, db, users, make_line, fake_sender):
+    def test_transition_from_assignee_to_escalation_across_days(
+        self, db, users, make_line, fake_sender
+    ):
         # -7 today (within window -> assignee), -8 tomorrow (past window -> escalation)
         line = make_line(due_in_days=0, assigned_to=users["alice"])
         line.promised_delivery = TODAY - timedelta(days=7)

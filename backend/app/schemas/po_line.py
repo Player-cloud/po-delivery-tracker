@@ -54,7 +54,9 @@ class POLineUpdate(BaseModel):
     @classmethod
     def _reject_null_assignee(cls, data):
         if isinstance(data, dict) and "assigned_to_id" in data and data["assigned_to_id"] is None:
-            raise ValueError("assigned_to_id cannot be cleared — a PO line must always have an assignee")
+            raise ValueError(
+                "assigned_to_id cannot be cleared — a PO line must always have an assignee"
+            )
         return data
 
 

@@ -8,6 +8,7 @@ HTTP endpoint instead (POST /api/v1/internal/run-reminders via GitHub Actions).
 Usage (from backend/, venv active, .env configured, DB up):
     python -m scripts.run_reminders
 """
+
 import logging
 
 from app.db.session import SessionLocal

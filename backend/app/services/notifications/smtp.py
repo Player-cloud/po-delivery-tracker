@@ -4,6 +4,7 @@ Deliberately uses the stdlib `smtplib` and no auth/TLS: Mailhog accepts anything
 on port 1025 and never actually delivers, so you can watch reminders arrive at
 http://localhost:8025 without sending real email.
 """
+
 from __future__ import annotations
 
 import smtplib

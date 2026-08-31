@@ -5,6 +5,7 @@
   - "due_today"                          one-shot, on the due date
   - "overdue_2026-08-31"                 one *per calendar day* while overdue
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select

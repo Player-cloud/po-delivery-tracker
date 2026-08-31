@@ -3,6 +3,7 @@
 Free tier: 3,000 emails/month (~100/day). Needs `RESEND_API_KEY` and a verified
 sender domain for `SMTP_FROM_ADDRESS`.
 """
+
 from __future__ import annotations
 
 import httpx

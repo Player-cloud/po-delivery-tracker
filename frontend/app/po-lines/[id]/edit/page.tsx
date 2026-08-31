@@ -6,18 +6,29 @@ import { apiFetch } from "@/lib/api";
 
 type FormState = {
   promised_delivery: string;
+  assigned_to_id: string;
   priority: string;
   notes: string;
   delivered: boolean;
 };
+
+type AssignableUser = { id: number; email: string };
 
 export default function EditPOLinePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [form, setForm] = useState<FormState | null>(null);
+  const [users, setUsers] = useState<AssignableUser[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/users/assignable")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setUsers(data))
+      .catch(() => setUsers([]));
+  }, []);
 
   useEffect(() => {
     apiFetch(`/po-lines/${id}`)
@@ -28,6 +39,7 @@ export default function EditPOLinePage() {
       .then((data) =>
         setForm({
           promised_delivery: data.promised_delivery,
+          assigned_to_id: data.assigned_to_id ? String(data.assigned_to_id) : "",
           priority: data.priority || "",
           notes: data.notes || "",
           delivered: data.delivered,
@@ -50,6 +62,7 @@ export default function EditPOLinePage() {
       method: "PUT",
       body: JSON.stringify({
         promised_delivery: form.promised_delivery,
+        assigned_to_id: Number(form.assigned_to_id),
         priority: form.priority || null,
         notes: form.notes || null,
         delivered: form.delivered,
@@ -83,6 +96,25 @@ export default function EditPOLinePage() {
             className="mt-1 w-full rounded border px-3 py-2"
             required
           />
+        </label>
+
+        <label className="text-sm text-zinc-600">
+          Assigned To
+          <select
+            value={form.assigned_to_id}
+            onChange={(e) => updateField("assigned_to_id", e.target.value)}
+            className="mt-1 w-full rounded border px-3 py-2"
+            required
+          >
+            <option value="" disabled>
+              Select an assignee
+            </option>
+            {users.map((u) => (
+              <option key={u.id} value={String(u.id)}>
+                {u.email}
+              </option>
+            ))}
+          </select>
         </label>
 
         <select

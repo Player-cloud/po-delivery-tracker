@@ -1,7 +1,7 @@
 # PO Delivery Tracker — Product Requirements Document
 
 **Version:** 2.2 — Approved
-**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1 notifications + §14 Q2/Q3, M2 dashboard & list UI, and M3 attachments all built and tested; project pushed to a private GitHub monorepo (§17). Next: M4 (admin screens).
+**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1–M4 built and tested (notifications + §14 Q2/Q3, dashboard & list UI, attachments, admin screens); frontend lint cleanup done; project pushed to a private GitHub monorepo (§17). Next: M5 (test suite + CI), M6 (deploy).
 **Supersedes:** the original SharePoint proposal (executive-summary Word doc), and consolidates `SRS.md` + `SYSTEM_DESIGN.md` (v0.1 drafts) with a direct audit of this repository as it stood on 31 Aug 2026.
 **Repository:** https://github.com/Player-cloud/po-delivery-tracker (private) · single monorepo: `backend/`, `frontend/`, `docs/`, `.github/`. Setup steps in §17.
 **Companion wireframes:** https://claude.ai/code/artifact/846dade2-b771-45bc-bbae-1904c6e02f96
@@ -68,10 +68,10 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | Colour-coded urgency (UI) | `[DONE]` | M2 — shared `StatusBadge` (colour + label) on the list and the dashboard; app pinned to light mode |
 | **Email reminders** | `[DONE]` | Reminder engine, `NotificationSender` (Mailhog/Resend/Brevo), dedup log, and `POST /internal/run-reminders` — M1, tested. Production scheduler wiring is M6 |
 | Configurable alert thresholds — API | `[DONE]` | `GET/PUT /config/thresholds`, Administrator-only |
-| Configurable alert thresholds — admin UI | `[GAP]` | No screen to edit thresholds yet |
+| Configurable alert thresholds — admin UI | `[DONE]` | M4 — `/admin/thresholds`: add/remove day values, save to `PUT /config/thresholds` |
 | File attachments | `[DONE]` | M3 — `Storage` abstraction (local disk / S3-compatible R2), upload/list/download/delete endpoints, attachments panel on the Edit screen |
 | User management — API | `[DONE]` | Admin-only create/list/update |
-| User management — admin UI | `[GAP]` | Backend-only; no screen yet |
+| User management — admin UI | `[DONE]` | M4 — `/admin/users`: list, create, change role, activate/deactivate, reset password; can't lock yourself out |
 | Audit trail (created/modified by + when) | `[DONE]` | Enforced at the ORM layer |
 | Deletion audit trail | `[DONE]` | New since the last design pass — see §11 |
 | Automated tests / CI | `[GAP]` | No test suite or pipeline found in the repo |
@@ -98,7 +98,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | FR-11 | Send a due-today alert, then a daily reminder while overdue | `[DONE]` — `due_today` label, then date-stamped `overdue_<date>` once per calendar day |
 | FR-12 | Stop all reminders once a line is marked Delivered | `[DONE]` — delivered lines drop out of the pass's query |
 | FR-13 | Log every sent reminder (line, threshold, recipient, time) so nothing sends twice | `[DONE]` — `NotificationHistory` write + per-send commit; failed sends are not logged, so they retry |
-| FR-14 | Administrator can change alert thresholds without a code change | `[PARTIAL]` — `GET/PUT /config/thresholds` live and honoured by the engine; admin UI is M4 |
+| FR-14 | Administrator can change alert thresholds without a code change | `[DONE]` — `GET/PUT /config/thresholds` + the `/admin/thresholds` screen (M4); the reminder engine reads the value live |
 | FR-15 | Dashboard KPI counts: Total Open, Due Today, Due This Week, Overdue, Completed, High Priority | `[DONE]` |
 | FR-16 | Dashboard surfaces the open lines needing attention, not counts alone | `[DONE]` — `GET /dashboard/attention` + a "Needs attention" table and an urgency composition bar |
 | FR-17 | List view supports filtering by status and searching by PO number | `[DONE]` — status dropdown + debounced search on the PO Lines list |
@@ -106,7 +106,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | FR-19 | Role-based access enforced server-side on every route | `[DONE]` |
 | FR-20 | Staff see only assigned PO lines; other roles see all | `[DONE]` |
 | FR-21 | Every write is attributable to a user and a timestamp | `[DONE]` |
-| FR-22 | Administrator can manage users and roles | `[PARTIAL]` |
+| FR-22 | Administrator can manage users and roles | `[DONE]` — `/admin/users` (M4): create, role change, activate/deactivate, password reset; server rejects an admin removing their own access |
 | FR-23 | Authenticate via JWT, with a path to Microsoft Entra ID SSO later | `[PARTIAL]` |
 | FR-24 | Database reachable directly by Power BI for reporting | `[PROPOSED]` |
 
@@ -208,7 +208,7 @@ Base path `/api/v1`. Every route except `/auth/login` requires a JWT; role check
 | GET | `/dashboard/summary` | any | live — now also returns `due_soon` / `later` (a non-overlapping partition of open lines, for the urgency bar) |
 | GET | `/dashboard/attention` | any (own, if Staff) | live |
 | GET / PUT | `/config/thresholds` | Administrator | live |
-| GET / POST / PUT | `/users` | Administrator | live |
+| GET / POST / PUT | `/users` | Administrator | live — `PUT` rejects an admin demoting/deactivating themselves (400) |
 | GET | `/users/assignable` | Staff, Manager, Admin | live |
 | POST | `/internal/run-reminders` | none (secret `CRON_SECRET` bearer token) | live |
 | GET | `/po-lines/{id}/attachments` | any (own, if Staff) | live |
@@ -231,8 +231,8 @@ See the companion canvas: https://claude.ai/code/artifact/846dade2-b771-45bc-bba
 | Edit PO Line | built | required Assigned To picker (M2); attachments panel — upload / download / delete (M3) |
 | Request Deletion | built | reason required |
 | Admin — Deletion Requests | built | approve/reject with notes |
-| Admin — Alert Thresholds | proposed | new screen — closes FR-14 |
-| Admin — Users | proposed | new screen — closes FR-22 |
+| Admin — Alert Thresholds | built | M4 — `/admin/thresholds`, admin-only |
+| Admin — Users | built | M4 — `/admin/users`, admin-only |
 
 ---
 
@@ -340,7 +340,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 - **M1 — Notifications — DONE (31 Aug 2026).** Reminder engine, `NotificationSender` (Mailhog/Resend/Brevo), dedup log, and the `POST /internal/run-reminders` endpoint per §10, with unit + integration tests. Closes FR-10, FR-11, FR-12, FR-13; FR-14 is API-complete (admin UI in M4). The §14 Q2/Q3 follow-ups (Assigned To required; overdue escalation) are also built — see §10. Remaining for M1: wire the committed GitHub Actions workflow to a deployed backend (M6).
 - **M2 — Dashboard & list UI — DONE (31 Aug 2026).** `GET /dashboard/attention` + a "Needs attention" table and an urgency composition bar on the dashboard (`due_soon`/`later` added to the summary as a clean partition); status filter + debounced PO-number search + colour-coded `StatusBadge` on the PO Lines list; shared `lib/urgency.ts`. Also fixed en route: app pinned to light mode (white-card design was breaking under OS dark mode) and a broken "Request Deletion" link. Column sort deferred. Closes FR-16, FR-17, FR-18.
 - **M3 — Attachments — DONE (31 Aug 2026).** `Storage` abstraction (local disk / S3-compatible R2), upload/list/download/delete endpoints with extension + size validation, and an attachments panel on the Edit screen. Closes FR-4; resolves §14 Q6 (interim). Verified end-to-end (curl + browser) on local disk; R2 path wired but exercised in M6.
-- **M4 — Admin screens.** Alert-threshold config screen and user-management screen. Closes FR-14 and FR-22 in full.
+- **M4 — Admin screens — DONE (31 Aug 2026).** `/admin/thresholds` (edit the reminder day-thresholds) and `/admin/users` (create users, change role, activate/deactivate, reset password), both admin-only via a shared `<RequireAdmin>` guard. Backend adds a self-lockout guard on `PUT /users/{id}`. Closes FR-14 and FR-22. Shipped alongside a **frontend cleanup pass**: `useAuth()` via `useSyncExternalStore` (NavBar/guards now react to login-out instantly, incl. cross-tab), every data-fetch effect moved to the cancel-flag pattern (whole frontend passes `eslint` clean), create-next-app cruft removed (real `<title>`, `/` redirects to `/po-lines`), `NEXT_PUBLIC_API_BASE_URL` support in `lib/api.ts`.
 - **M5 — Hardening.** Automated test suite and a CI pipeline running it on every push. Closes NFR-5.
 - **M6 — Production deployment (free-tier stack).** Repo is live at https://github.com/Player-cloud/po-delivery-tracker. Create the Neon database, Cloudflare R2 bucket, and Resend/Brevo sender; deploy the frontend to Vercel and the backend to Render with env vars per §17.5; set the two GitHub repo secrets and `gh workflow enable "Daily PO reminders"`. Resolves §14 Q10–Q11 first.
 - **M7 — stretch.** SSO, Power BI, mobile — pending answers to §14.

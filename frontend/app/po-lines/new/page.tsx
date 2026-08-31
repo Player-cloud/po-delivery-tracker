@@ -34,10 +34,19 @@ export default function NewPOLinePage() {
   const router = useRouter();
 
   useEffect(() => {
-    apiFetch("/users/assignable")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setUsers(data))
-      .catch(() => setUsers([]));
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/users/assignable");
+        const data = res.ok ? await res.json() : [];
+        if (!ignore) setUsers(data);
+      } catch {
+        if (!ignore) setUsers([]);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   function updateField(field: keyof FormState, value: string) {

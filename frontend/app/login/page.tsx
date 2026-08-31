@@ -2,36 +2,27 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { login } from "@/lib/api";
 import { saveToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-
-    const body = new URLSearchParams();
-    body.set("username", email);
-    body.set("password", password);
-
-    const response = await fetch("http://localhost:8000/api/v1/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
-    });
-
-    if (!response.ok) {
+    setSubmitting(true);
+    try {
+      saveToken(await login(email, password));
+      router.push("/po-lines");
+    } catch {
       setError("Login failed — check your email and password");
-      return;
+      setSubmitting(false);
     }
-
-    const data = await response.json();
-    saveToken(data.access_token);
-    router.push("/po-lines");
   }
 
   return (
@@ -64,9 +55,10 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800"
+          disabled={submitting}
+          className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800 disabled:opacity-50"
         >
-          Log in
+          {submitting ? "Signing in..." : "Log in"}
         </button>
       </form>
     </div>

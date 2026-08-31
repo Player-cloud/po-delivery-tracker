@@ -25,28 +25,44 @@ export default function EditPOLinePage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    apiFetch("/users/assignable")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setUsers(data))
-      .catch(() => setUsers([]));
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/users/assignable");
+        const data = res.ok ? await res.json() : [];
+        if (!ignore) setUsers(data);
+      } catch {
+        if (!ignore) setUsers([]);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
-    apiFetch(`/po-lines/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load PO line");
-        return res.json();
-      })
-      .then((data) =>
-        setForm({
-          promised_delivery: data.promised_delivery,
-          assigned_to_id: data.assigned_to_id ? String(data.assigned_to_id) : "",
-          priority: data.priority || "",
-          notes: data.notes || "",
-          delivered: data.delivered,
-        })
-      )
-      .catch(() => setError("Could not load this PO line"));
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiFetch(`/po-lines/${id}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (!ignore) {
+          setForm({
+            promised_delivery: data.promised_delivery,
+            assigned_to_id: data.assigned_to_id ? String(data.assigned_to_id) : "",
+            priority: data.priority || "",
+            notes: data.notes || "",
+            delivered: data.delivered,
+          });
+        }
+      } catch {
+        if (!ignore) setError("Could not load this PO line");
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, [id]);
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {

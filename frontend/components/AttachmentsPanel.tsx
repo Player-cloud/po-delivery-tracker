@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 type Attachment = {
@@ -27,21 +27,34 @@ export default function AttachmentsPanel({ poLineId }: { poLineId: string }) {
 
   const base = `/po-lines/${poLineId}/attachments`;
 
-  const load = useCallback(async () => {
+  // Used by the upload/delete handlers to refresh after a mutation.
+  async function reload() {
     try {
       const r = await apiFetch(base);
-      if (!r.ok) throw new Error();
-      setItems(await r.json());
+      if (r.ok) setItems(await r.json());
     } catch {
       setError("Could not load attachments");
-    } finally {
-      setLoading(false);
     }
-  }, [base]);
+  }
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let ignore = false;
+    (async () => {
+      try {
+        const r = await apiFetch(base);
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        if (!ignore) setItems(data);
+      } catch {
+        if (!ignore) setError("Could not load attachments");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [base]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -58,7 +71,7 @@ export default function AttachmentsPanel({ poLineId }: { poLineId: string }) {
       setError(typeof data.detail === "string" ? data.detail : "Upload failed");
       return;
     }
-    void load();
+    void reload();
   }
 
   async function handleDownload(a: Attachment) {

@@ -22,8 +22,9 @@ const STATUS_OPTIONS = ["Upcoming", "Due Today", "Overdue", "Delivered"];
 
 export default function POLinesPage() {
   const [lines, setLines] = useState<POLine[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // `loading` is derived: true whenever the fetched data isn't for the current query.
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
 
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
@@ -42,24 +43,27 @@ export default function POLinesPage() {
     return s ? `?${s}` : "";
   }, [status, debouncedSearch]);
 
+  const loading = loadedQuery !== query;
+
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    apiFetch(`/po-lines${query}`)
-      .then((res) => {
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiFetch(`/po-lines${query}`);
         if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (!cancelled) {
+        const data = await res.json();
+        if (!ignore) {
           setLines(data);
           setError("");
         }
-      })
-      .catch(() => !cancelled && setError("Could not load PO lines"))
-      .finally(() => !cancelled && setLoading(false));
+      } catch {
+        if (!ignore) setError("Could not load PO lines");
+      } finally {
+        if (!ignore) setLoadedQuery(query);
+      }
+    })();
     return () => {
-      cancelled = true;
+      ignore = true;
     };
   }, [query]);
 

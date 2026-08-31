@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-import { getUserRole } from "@/lib/auth";
+import RequireAdmin from "@/components/RequireAdmin";
 
 type DeletionRequest = {
   id: number;
@@ -18,54 +17,66 @@ type DeletionRequest = {
 };
 
 export default function DeletionRequestsPage() {
+  return (
+    <RequireAdmin>
+      <DeletionRequests />
+    </RequireAdmin>
+  );
+}
+
+function DeletionRequests() {
   const [requests, setRequests] = useState<DeletionRequest[]>([]);
   const [error, setError] = useState("");
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const router = useRouter();
+  const [loaded, setLoaded] = useState(false);
+
+  async function reload() {
+    try {
+      const res = await apiFetch("/deletion-requests");
+      if (res.ok) setRequests(await res.json());
+      else setError("Could not load deletion requests");
+    } catch {
+      setError("Could not load deletion requests");
+    }
+  }
 
   useEffect(() => {
-    if (getUserRole() !== "administrator") {
-      setAuthorized(false);
-      return;
-    }
-    setAuthorized(true);
-    loadRequests();
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/deletion-requests");
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (!ignore) setRequests(data);
+      } catch {
+        if (!ignore) setError("Could not load deletion requests");
+      } finally {
+        if (!ignore) setLoaded(true);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  function loadRequests() {
-    apiFetch("/deletion-requests")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then((data) => setRequests(data))
-      .catch(() => setError("Could not load deletion requests"));
-  }
 
   async function handleReview(id: number, action: "approve" | "reject") {
     const notes = window.prompt(
       action === "approve" ? "Approval notes (optional):" : "Reason for rejecting:"
     );
-    if (notes === null) return; // user hit Cancel on the prompt
+    if (notes === null) return; // Cancel
 
-    const response = await apiFetch(`/deletion-requests/${id}/${action}`, {
+    const res = await apiFetch(`/deletion-requests/${id}/${action}`, {
       method: "POST",
       body: JSON.stringify({ resolution_notes: notes || null }),
     });
-
-    if (!response.ok) {
-      const data = await response.json();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
       alert(typeof data.detail === "string" ? data.detail : "Something went wrong");
       return;
     }
-
-    loadRequests(); // refresh the list to reflect the new status
+    void reload();
   }
 
-  if (authorized === false) {
-    return <p className="p-8 text-red-600">Administrators only.</p>;
-  }
-  if (authorized === null) return <p className="p-8">Loading...</p>;
+  if (!loaded && !error) return <p className="p-8">Loading...</p>;
   if (error) return <p className="p-8 text-red-600">{error}</p>;
 
   const pending = requests.filter((r) => r.status === "pending");
@@ -75,15 +86,13 @@ export default function DeletionRequestsPage() {
     <div className="p-8">
       <h1 className="mb-6 text-xl font-semibold">Deletion Requests</h1>
 
-      <h2 className="mb-2 text-sm font-semibold text-zinc-600">
-        Pending ({pending.length})
-      </h2>
+      <h2 className="mb-2 text-sm font-semibold text-zinc-600">Pending ({pending.length})</h2>
       <table className="mb-8 w-full border-collapse text-left text-sm">
         <thead>
-          <tr className="border-b">
-            <th className="py-2">PO</th>
-            <th>Reason</th>
-            <th>Requested By</th>
+          <tr className="border-b text-xs uppercase text-zinc-400">
+            <th className="py-2 font-medium">PO</th>
+            <th className="font-medium">Reason</th>
+            <th className="font-medium">Requested By</th>
             <th></th>
           </tr>
         </thead>
@@ -124,12 +133,12 @@ export default function DeletionRequestsPage() {
       <h2 className="mb-2 text-sm font-semibold text-zinc-600">History</h2>
       <table className="w-full border-collapse text-left text-sm">
         <thead>
-          <tr className="border-b">
-            <th className="py-2">PO</th>
-            <th>Status</th>
-            <th>Reason</th>
-            <th>Reviewed By</th>
-            <th>Notes</th>
+          <tr className="border-b text-xs uppercase text-zinc-400">
+            <th className="py-2 font-medium">PO</th>
+            <th className="font-medium">Status</th>
+            <th className="font-medium">Reason</th>
+            <th className="font-medium">Reviewed By</th>
+            <th className="font-medium">Notes</th>
           </tr>
         </thead>
         <tbody>
@@ -146,6 +155,13 @@ export default function DeletionRequestsPage() {
               <td>{r.resolution_notes}</td>
             </tr>
           ))}
+          {resolved.length === 0 && (
+            <tr>
+              <td colSpan={5} className="py-4 text-zinc-400">
+                No history yet.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

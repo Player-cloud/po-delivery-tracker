@@ -12,10 +12,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Next.js dev server by default; tighten this to the real frontend origin in prod .env.
+# Allowed origins come from CORS_ORIGINS (comma-separated); defaults to the
+# local Next.js dev server. Set it to the deployed frontend URL in production.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,5 +27,5 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health", tags=["health"])
 def health_check() -> dict:
-    """Used by Docker/Azure App Service health probes — no auth required."""
+    """No-auth health probe — used by Render's health check and the keep-warm ping."""
     return {"status": "ok", "environment": settings.environment}

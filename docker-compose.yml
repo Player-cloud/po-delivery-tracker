@@ -29,9 +29,13 @@ services:
     env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/po_tracking
+      SMTP_HOST: mailhog          # reach Mailhog by service name, not localhost
+      CORS_ORIGINS: http://localhost:3000
     depends_on:
       db:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     ports:
       - "8000:8000"
     volumes:

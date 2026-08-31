@@ -1,0 +1,60 @@
+# Render Blueprint for the backend API (M6). See docs/DEPLOYMENT.md for the walkthrough.
+#
+# In the Render dashboard: New > Blueprint > pick this repo. Render reads this file,
+# creates the service, and prompts for every env var marked `sync: false`.
+#
+# The frontend is NOT here — it deploys to Cloudflare Pages (docs/DEPLOYMENT.md §3).
+
+services:
+  - type: web
+    name: po-tracker-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon              # match your Neon region for lower DB latency
+    healthCheckPath: /health
+    autoDeploy: true            # redeploy on push to the connected branch
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+
+      # --- secrets / per-environment (Render prompts for these) ---
+      - key: DATABASE_URL
+        sync: false             # Neon POOLED connection string (…-pooler.…)
+      - key: SECRET_KEY
+        generateValue: true     # Render generates a strong value once
+      - key: CRON_SECRET
+        generateValue: true     # must also be set as a GitHub repo secret (same value)
+      - key: CORS_ORIGINS
+        sync: false             # e.g. https://po-tracker.pages.dev
+      - key: FRONTEND_BASE_URL
+        sync: false             # same URL — used for links in reminder emails
+
+      # --- email (Resend) ---
+      - key: EMAIL_BACKEND
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SMTP_FROM_ADDRESS
+        sync: false             # an address on your Resend-verified domain
+      - key: SMTP_FROM_NAME
+        value: PO Delivery Tracker
+      - key: REMINDER_ESCALATION_EMAIL
+        sync: false             # manager/admin address for overdue escalation
+
+      # --- attachment storage (Cloudflare R2) ---
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false             # https://<account_id>.r2.cloudflarestorage.com
+      - key: S3_REGION
+        value: auto
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false

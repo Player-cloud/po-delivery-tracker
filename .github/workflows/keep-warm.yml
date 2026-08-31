@@ -1,0 +1,36 @@
+# Pings the backend's /health during business hours so Render's free instance
+# (sleeps after ~15 min idle) is usually already awake when someone loads the app.
+#
+# Best-effort: GitHub can delay scheduled runs under load, so an occasional cold
+# start still happens. Costs ~1,200 GitHub Actions minutes/month.
+#
+# No-op until the BACKEND_BASE_URL repo secret is set (see docs/DEPLOYMENT.md) —
+# so it's safe to leave enabled before the backend exists.
+
+name: Keep backend warm
+
+on:
+  schedule:
+    - cron: "*/14 6-19 * * 1-5" # every ~14 min, 06:00-19:59 UTC, Mon-Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        env:
+          BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
+        run: |
+          if [ -z "${BACKEND_BASE_URL:-}" ]; then
+            echo "BACKEND_BASE_URL not set yet — nothing to ping."
+            exit 0
+          fi
+          code=$(curl -sS --max-time 90 -o /dev/null -w '%{http_code}' "${BACKEND_BASE_URL%/}/health")
+          echo "HTTP ${code}"
+          # A slow wake is still a success; only a real error status fails the run.
+          case "${code}" in 2*|3*) exit 0 ;; *) echo "::warning::/health returned ${code}"; exit 1 ;; esac

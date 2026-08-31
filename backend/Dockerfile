@@ -20,11 +20,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Now copy everything else (app code, alembic, scripts).
+# Now copy everything else (app code, alembic, scripts, start.sh).
 COPY . .
 
+# Render provides $PORT; locally it defaults to 8000.
 EXPOSE 8000
 
-# In production you'd drop --reload (it's a dev convenience that watches
-# for file changes) — for now, matches what you've been running locally.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# start.sh runs `alembic upgrade head` then execs uvicorn on $PORT.
+# Invoked via `sh` so it works even when the exec bit is lost over a bind mount.
+CMD ["sh", "start.sh"]

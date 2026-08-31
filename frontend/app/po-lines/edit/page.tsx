@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 
@@ -16,7 +16,15 @@ type FormState = {
 type AssignableUser = { id: number; email: string };
 
 export default function EditPOLinePage() {
-  const { id } = useParams<{ id: string }>();
+  return (
+    <Suspense fallback={<p className="p-8">Loading...</p>}>
+      <EditPOLine />
+    </Suspense>
+  );
+}
+
+function EditPOLine() {
+  const id = useSearchParams().get("id");
   const router = useRouter();
 
   const [form, setForm] = useState<FormState | null>(null);
@@ -41,6 +49,7 @@ export default function EditPOLinePage() {
   }, []);
 
   useEffect(() => {
+    if (!id) return;
     let ignore = false;
     (async () => {
       try {
@@ -96,6 +105,7 @@ export default function EditPOLinePage() {
     router.push("/po-lines");
   }
 
+  if (!id) return <p className="p-8 text-red-600">No PO line specified.</p>;
   if (error) return <p className="p-8 text-red-600">{error}</p>;
   if (!form) return <p className="p-8">Loading...</p>;
 

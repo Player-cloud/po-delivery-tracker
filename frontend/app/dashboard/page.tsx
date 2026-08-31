@@ -137,7 +137,7 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-6 py-2">
                     <Link
-                      href={`/po-lines/${l.id}/edit`}
+                      href={`/po-lines/edit?id=${l.id}`}
                       className="text-blue-600 hover:underline"
                     >
                       Edit

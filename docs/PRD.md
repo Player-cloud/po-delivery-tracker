@@ -1,7 +1,7 @@
 # PO Delivery Tracker — Product Requirements Document
 
 **Version:** 2.2 — Approved
-**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1–M5 built and tested (notifications + §14 Q2/Q3, dashboard & list UI, attachments, admin screens, CI); private GitHub monorepo (§17) with CI on every push. Next: M6 (deploy — resolve §14 Q10/Q11 first).
+**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack: Cloudflare Pages + Render + Neon + R2 + Resend); M1–M5 built and tested; M6 deployment config + runbook (`docs/DEPLOYMENT.md`) ready, provisioning is the owner's step. Private GitHub monorepo (§17) with CI on every push. Remaining: run the M6 runbook, then M7 (stretch).
 **Supersedes:** the original SharePoint proposal (executive-summary Word doc), and consolidates `SRS.md` + `SYSTEM_DESIGN.md` (v0.1 drafts) with a direct audit of this repository as it stood on 31 Aug 2026.
 **Repository:** https://github.com/Player-cloud/po-delivery-tracker (private) · single monorepo: `backend/`, `frontend/`, `docs/`, `.github/`. Setup steps in §17.
 **Companion wireframes:** https://claude.ai/code/artifact/846dade2-b771-45bc-bbae-1904c6e02f96
@@ -75,7 +75,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | Audit trail (created/modified by + when) | `[DONE]` | Enforced at the ORM layer |
 | Deletion audit trail | `[DONE]` | New since the last design pass — see §11 |
 | Automated tests / CI | `[DONE]` | M5 — 83 backend tests + 8 frontend unit tests; `.github/workflows/ci.yml` runs ruff + pytest + a Postgres migration up/down + frontend typecheck/lint/test/build on every push and PR |
-| Cloud deployment / infra | `[GAP]` | `infra/` exists but is empty; target stack is Vercel + Render + Neon + R2 (§13) |
+| Cloud deployment / infra | `[PARTIAL]` | M6 — all config in the repo (`render.yaml`, static-export frontend, `docs/DEPLOYMENT.md` runbook); not yet provisioned. Stack: Cloudflare Pages + Render + Neon + R2 (§13) |
 | SSO (Microsoft Entra ID) | `[PROPOSED]` | Designed for, not started |
 | Power BI reporting connection | `[PROPOSED]` | Nothing blocks it; not yet configured or tested |
 
@@ -114,9 +114,9 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 
 | ID | Requirement | Status |
 |---|---|---|
-| NFR-1 | Dashboard loads under 2s with up to 5,000 open PO lines | `[PARTIAL]` — not load-tested; a free-tier backend that has scaled to zero adds a one-time cold-start delay (~1 min) on the first request after idle — see §13 and §14 Q11 |
+| NFR-1 | Dashboard loads under 2s with up to 5,000 open PO lines | `[PARTIAL]` — not load-tested; frontend is a static export (fast), but a cold Render backend adds ~1 min on the first request after idle. Keep-warm covers business hours (§13, §14 Q11) |
 | NFR-2 | Production deployment targets 99% uptime | `[PROPOSED]` — no prod env yet; free-tier hosts sleep on idle (they wake on request, but the first hit is slow) — 99% *availability* holds, sub-2s *latency* does not without a paid always-on tier |
-| NFR-3 | Secrets never committed; prod secrets held in the host's environment-variable store | `[PARTIAL]` — `.env` gitignored locally; Vercel / Render env vars used in prod, no secret manager needed at this scale |
+| NFR-3 | Secrets never committed; prod secrets held in the host's environment-variable store | `[PARTIAL]` — `.env` gitignored locally; prod secrets live in Render env vars, Cloudflare Pages env vars, and GitHub repo secrets (`render.yaml` marks them `sync: false`); no secret manager needed at this scale |
 | NFR-4 | Schema normalized for future growth without redesign | `[DONE]` |
 | NFR-5 | Automated tests, run in CI on every push | `[DONE]` — `ci.yml`: backend lint+tests, migration up/down on Postgres, frontend typecheck/lint/test/build |
 | NFR-6 | Full app runs locally via `docker compose up`, no cloud dependency | `[DONE]` |
@@ -303,19 +303,19 @@ The `Attachment` row keeps `blob_path` (the opaque storage key `po_lines/<id>/<u
 
 The production target is an **all-free-tier stack**, chosen so the project costs nothing to run and stays portable (every piece is standard Postgres / S3 / SMTP-style HTTP, swappable for a paid equivalent later without code changes).
 
-| Concern | Local (today) | Production (target) | Free-tier limit that matters |
+| Concern | Local (today) | Production | Free-tier limit that matters |
 |---|---|---|---|
-| Frontend hosting | `next dev` | **Vercel** (Hobby) | 100 GB bandwidth/mo; **non-commercial use only** — see §14 Q10 |
+| Frontend hosting | `next dev` | **Cloudflare Pages** (static export, §14 Q10) | commercial use allowed, unlimited bandwidth, 500 builds/mo, 20k files |
 | Backend hosting | Uvicorn in Docker | **Render** (free web service) | 512 MB / 0.1 CPU, sleeps after ~15 min idle (~1 min cold start), ~100s request cap |
 | Database | Postgres in Docker | **Neon** (free) | 0.5 GB storage, 100 compute-hrs/mo, scale-to-zero; use the **pooled** connection string |
 | File storage | Local volume | **Cloudflare R2** (free) | 10 GB storage, 1M writes/mo, no egress fees |
-| Email | Mailhog | **Resend** or **Brevo** (free) | Resend ~100/day, Brevo 300/day; verified sender domain required |
-| Secrets | `.env` file | Vercel + Render environment variables | no secret manager at this scale |
-| Scheduler | manual call / local `cron` → `/internal/run-reminders` | **GitHub Actions** scheduled workflow → same endpoint (fallback: cron-job.org) | GitHub Actions cron: free, ~5–15 min timing jitter, UTC |
+| Email | Mailhog | **Resend** (free) | ~100/day; verified sender domain required |
+| Secrets | `.env` file | Render env vars + Cloudflare Pages env vars + GitHub repo secrets | no secret manager needed at this scale |
+| Schedulers | manual call / local `cron` | **GitHub Actions** — daily `/internal/run-reminders` + business-hours keep-warm ping | cron: free, ~5–15 min timing jitter, UTC |
 
-`infra/` is currently an empty folder — nothing has been provisioned yet (milestone M6). What little "infra" this stack needs is a GitHub Actions workflow file (`.github/workflows/reminders.yml` — committed, currently **disabled** until the backend is deployed), a `vercel.json`, and a Render service definition — all committed to the repo, no separate IaC tool required.
+The frontend is a **static export** (`next.config.ts` `output: "export"`) — the app is entirely client-rendered, so it ships as plain HTML/JS with no Node server and no cold starts. Detail pages use a `?id=` query param (not a `[id]` path segment) so every route prerenders. `render.yaml` is a Render Blueprint; the full walkthrough is **`docs/DEPLOYMENT.md`**.
 
-**Known tradeoff of going fully free:** the Render backend sleeps when idle, so the first request after a quiet period (including the daily reminder run, and a user opening the dashboard first thing in the morning) waits ~1 minute while it wakes. If that proves unacceptable, the smallest fix is Render's paid always-on instance (~$7/mo) or Fly.io pay-as-you-go (~$2–5/mo) — no other change. Tracked as §14 Q11.
+**Known tradeoff of the free backend:** Render sleeps after ~15 min idle, so the first request after a quiet period waits ~1 minute. Mitigation (§14 Q11): `.github/workflows/keep-warm.yml` pings `/health` every ~14 min during business hours (UTC 06:00–20:00, Mon–Fri) — costs ~1,200 GitHub Actions minutes/month. Removing cold starts entirely = Render paid instance (~$7/mo), then drop keep-warm.
 
 ---
 
@@ -330,8 +330,8 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 7. Is a mobile-responsive layout required for v1, or is desktop-only acceptable initially?
 8. Any existing vendor or business-unit data that should be modeled now rather than retrofitted later?
 9. When a deletion request is approved, should the PO line be hard-deleted, or soft-deleted/archived so reporting history stays intact?
-10. Vercel's Hobby (free) plan is licensed for **non-commercial use only**. This is an employer tool. Accept the risk for a pilot, budget for Vercel Pro ($20/mo) at launch, or host the frontend on Cloudflare Pages / Netlify instead (both allow commercial use on their free tiers, both run Next.js)?
-11. Is a ~1-minute cold-start delay on the first request after an idle period acceptable, or should the backend go straight to a paid always-on tier (~$2–7/mo)?
+10. ~~Vercel Hobby is non-commercial-only — where does the frontend go?~~ **DECIDED (31 Aug 2026): Cloudflare Pages.** Free tier explicitly allows commercial use, unlimited bandwidth, runs the static export. No Vercel, no monthly cost.
+11. ~~Is a ~1-minute cold start acceptable?~~ **DECIDED (31 Aug 2026): free Render + keep-warm.** `keep-warm.yml` pings `/health` every ~14 min in business hours so users rarely hit a cold start; outside those hours the first hit still waits ~1 min. Upgrade to a paid Render instance later if that's not good enough.
 
 ---
 
@@ -342,7 +342,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 - **M3 — Attachments — DONE (31 Aug 2026).** `Storage` abstraction (local disk / S3-compatible R2), upload/list/download/delete endpoints with extension + size validation, and an attachments panel on the Edit screen. Closes FR-4; resolves §14 Q6 (interim). Verified end-to-end (curl + browser) on local disk; R2 path wired but exercised in M6.
 - **M4 — Admin screens — DONE (31 Aug 2026).** `/admin/thresholds` (edit the reminder day-thresholds) and `/admin/users` (create users, change role, activate/deactivate, reset password), both admin-only via a shared `<RequireAdmin>` guard. Backend adds a self-lockout guard on `PUT /users/{id}`. Closes FR-14 and FR-22. Shipped alongside a **frontend cleanup pass**: `useAuth()` via `useSyncExternalStore` (NavBar/guards now react to login-out instantly, incl. cross-tab), every data-fetch effect moved to the cancel-flag pattern (whole frontend passes `eslint` clean), create-next-app cruft removed (real `<title>`, `/` redirects to `/po-lines`), `NEXT_PUBLIC_API_BASE_URL` support in `lib/api.ts`.
 - **M5 — Hardening — DONE (31 Aug 2026).** `.github/workflows/ci.yml` (push + PR): backend `ruff check` / `ruff format --check` / `pytest` (83 tests), a migrations job that runs `alembic upgrade head` then `downgrade base` on a real Postgres, and a frontend job (`typecheck` / `lint` / `vitest` / `next build`). `ruff` config + `pytest` config in `backend/pyproject.toml`; whole backend `ruff format`-clean. Frontend gains `vitest` with unit tests for `lib/urgency.ts` and `lib/auth.ts`. Closes NFR-5. (Component-level frontend tests — jsdom + testing-library — deferred; noted in `vitest.config.mts`.)
-- **M6 — Production deployment (free-tier stack).** Repo is live at https://github.com/Player-cloud/po-delivery-tracker. Create the Neon database, Cloudflare R2 bucket, and Resend/Brevo sender; deploy the frontend to Vercel and the backend to Render with env vars per §17.5; set the two GitHub repo secrets and `gh workflow enable "Daily PO reminders"`. Resolves §14 Q10–Q11 first.
+- **M6 — Production deployment — config ready (31 Aug 2026), provisioning pending.** §14 Q10/Q11 decided (Cloudflare Pages; free Render + keep-warm). In the repo: `render.yaml` blueprint, `output: "export"` frontend (query-param detail routes), backend prod-readiness (`CORS_ORIGINS`, `$PORT`, migrate-on-start via `start.sh`, Neon pool tuning), `keep-warm.yml`, and a full runbook at **`docs/DEPLOYMENT.md`**. Backend + frontend Docker images build and run locally with production env (migrations apply, CORS allowlist enforced, static site serves). Remaining (owner, ~1–2 hrs following the runbook): create Neon / R2 / Resend / Render / Pages accounts, wire env vars, set the two GitHub secrets, `gh workflow enable` both schedulers, seed the first admin.
 - **M7 — stretch.** SSO, Power BI, mobile — pending answers to §14.
 
 ---
@@ -360,11 +360,13 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 ```
 po-delivery-tracker/
 ├── backend/          FastAPI + PostgreSQL API (Python 3.13+)
-├── frontend/         Next.js 16 app (React 19)
-├── docs/             this PRD + earlier design drafts
+├── frontend/         Next.js 16 app (React 19), static export
+├── docs/             this PRD, DEPLOYMENT.md runbook, earlier design drafts
 ├── .github/workflows/
-│     ├── ci.yml        lint + tests + migrations + build, on every push / PR (M5)
-│     └── reminders.yml  daily reminder scheduler (disabled until M6)
+│     ├── ci.yml         lint + tests + migrations + build, on every push / PR (M5)
+│     ├── reminders.yml  daily reminder scheduler (enable at deploy — M6)
+│     └── keep-warm.yml  business-hours /health ping so Render doesn't cold-start (M6)
+├── render.yaml       Render Blueprint for the backend (M6)
 ├── docker-compose.yml   Postgres + Mailhog + api + frontend for local dev
 ├── .gitignore
 └── .gitattributes   forces LF line endings (deploy targets are Linux)
@@ -422,29 +424,11 @@ Expects the backend at `http://localhost:8000` — override with
 docker compose up --build                          # from repo root — db, mailhog, api, frontend
 ```
 
-### 17.5 Deployment secrets (M6)
+### 17.5 Deployment
 
-Set in the respective dashboards / `gh secret set`:
-
-| Where | Name | Purpose |
-|---|---|---|
-| Render (backend env) | `DATABASE_URL` | Neon **pooled** connection string |
-| Render | `SECRET_KEY` | JWT signing |
-| Render | `CRON_SECRET` | bearer token for `/internal/run-reminders` — must match the GitHub secret |
-| Render | `FRONTEND_BASE_URL` | e.g. `https://po-delivery-tracker.vercel.app` (record links in emails) |
-| Render | `EMAIL_BACKEND` + `RESEND_API_KEY` / `BREVO_API_KEY` | production email |
-| Render | `SMTP_FROM_ADDRESS` | verified sender domain |
-| Render | `REMINDER_ESCALATION_EMAIL` | overdue-escalation recipient (§14 Q3) |
-| Render | `STORAGE_BACKEND=s3` + `S3_BUCKET` / `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Cloudflare R2 for attachments (M3); `S3_REGION` stays `auto` |
-| Vercel (frontend env) | `NEXT_PUBLIC_API_BASE_URL` | the Render backend URL *(frontend currently hardcodes localhost — see M2/M6)* |
-| GitHub → repo secrets | `BACKEND_BASE_URL` | the Render backend origin, no trailing slash |
-| GitHub → repo secrets | `CRON_SECRET` | same value as the Render one |
-
-Then re-enable the scheduler:
-
-```bash
-gh workflow enable "Daily PO reminders"
-```
+The step-by-step walkthrough — Neon, Cloudflare R2, Resend, Render, Cloudflare
+Pages, GitHub secrets, first admin, smoke test — is **`docs/DEPLOYMENT.md`**.
+`render.yaml` drives the backend service and lists every env var it needs.
 
 ---
 

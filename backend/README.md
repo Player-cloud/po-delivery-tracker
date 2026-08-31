@@ -103,6 +103,8 @@ download / delete). Bytes live behind `app/services/storage/`:
 
 Upload limits: `ATTACHMENT_MAX_BYTES` (10 MB) and `ATTACHMENT_ALLOWED_EXTENSIONS`.
 
-## 8. Next
+## 8. Deployment
 
-M6 — production deployment (Vercel + Render + Neon + R2).
+Runbook: `docs/DEPLOYMENT.md` (Cloudflare Pages + Render + Neon + R2 + Resend).
+`render.yaml` at the repo root is the Render Blueprint; `start.sh` runs
+`alembic upgrade head` then uvicorn on `$PORT`.

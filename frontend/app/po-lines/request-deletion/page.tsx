@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 
 type POLine = {
@@ -10,7 +10,15 @@ type POLine = {
 };
 
 export default function RequestDeletionPage() {
-  const { id } = useParams<{ id: string }>();
+  return (
+    <Suspense fallback={<p className="p-8">Loading...</p>}>
+      <RequestDeletion />
+    </Suspense>
+  );
+}
+
+function RequestDeletion() {
+  const id = useSearchParams().get("id");
   const router = useRouter();
 
   const [poLine, setPOLine] = useState<POLine | null>(null);
@@ -19,13 +27,21 @@ export default function RequestDeletionPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    apiFetch(`/po-lines/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load PO line");
-        return res.json();
-      })
-      .then((data) => setPOLine(data))
-      .catch(() => setError("Could not load this PO line"));
+    if (!id) return;
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await apiFetch(`/po-lines/${id}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (!ignore) setPOLine(data);
+      } catch {
+        if (!ignore) setError("Could not load this PO line");
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, [id]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -49,6 +65,7 @@ export default function RequestDeletionPage() {
     router.push("/po-lines");
   }
 
+  if (!id) return <p className="p-8 text-red-600">No PO line specified.</p>;
   if (error && !poLine) return <p className="p-8 text-red-600">{error}</p>;
   if (!poLine) return <p className="p-8">Loading...</p>;
 

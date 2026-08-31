@@ -147,14 +147,14 @@ export default function POLinesPage() {
               </td>
               <td className="whitespace-nowrap">
                 <Link
-                  href={`/po-lines/${line.id}/edit`}
+                  href={`/po-lines/edit?id=${line.id}`}
                   className="text-blue-600 hover:underline"
                 >
                   Edit
                 </Link>
                 {" · "}
                 <Link
-                  href={`/po-lines/${line.id}/edit/request-deletion`}
+                  href={`/po-lines/request-deletion?id=${line.id}`}
                   className="text-red-600 hover:underline"
                 >
                   Request Deletion

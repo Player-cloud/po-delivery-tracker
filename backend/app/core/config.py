@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     app_name: str = "PO Delivery Tracking System"
     environment: str = "development"  # development | production
     debug: bool = True
+    # Comma-separated browser origins allowed by CORS. In production set this to
+    # the deployed frontend URL(s), e.g. "https://po-tracker.pages.dev".
+    cors_origins: str = "http://localhost:3000"
 
     # --- Database ---
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/po_tracking"
@@ -83,6 +86,10 @@ class Settings(BaseSettings):
     # backend host's request timeout or the email provider's free-tier daily cap.
     reminder_batch_size: int = 500
     reminder_max_emails_per_run: int = 90
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache

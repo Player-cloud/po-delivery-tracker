@@ -1,8 +1,9 @@
 # PO Delivery Tracker — Product Requirements Document
 
-**Version:** 2.1 — Approved
-**Status:** Approved by project owner, 31 Aug 2026. Deployment target revised 31 Aug 2026 (§13): Azure → an all-free-tier stack (Vercel + Render + Neon + Cloudflare R2 + Resend/Brevo).
+**Version:** 2.2 — Approved
+**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1 notifications + §14 Q2/Q3 built and tested; project pushed to a private GitHub monorepo (§17).
 **Supersedes:** the original SharePoint proposal (executive-summary Word doc), and consolidates `SRS.md` + `SYSTEM_DESIGN.md` (v0.1 drafts) with a direct audit of this repository as it stood on 31 Aug 2026.
+**Repository:** https://github.com/Player-cloud/po-delivery-tracker (private) · single monorepo: `backend/`, `frontend/`, `docs/`, `.github/`. Setup steps in §17.
 **Companion wireframes:** https://claude.ai/code/artifact/846dade2-b771-45bc-bbae-1904c6e02f96
 
 > **Read this first if you're picking up implementation work (e.g. in Claude Code):** the status tags below (`[DONE]` / `[PARTIAL]` / `[GAP]` / `[PROPOSED]`) reflect the codebase as of the audit date above. Re-verify against the current tree before trusting a tag — code moves faster than docs.
@@ -304,7 +305,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 | Secrets | `.env` file | Vercel + Render environment variables | no secret manager at this scale |
 | Scheduler | manual call / local `cron` → `/internal/run-reminders` | **GitHub Actions** scheduled workflow → same endpoint (fallback: cron-job.org) | GitHub Actions cron: free, ~5–15 min timing jitter, UTC |
 
-`infra/` is currently an empty folder — nothing has been provisioned yet (milestone M6). What little "infra" this stack needs is a GitHub Actions workflow file, a `vercel.json`, and a Render service definition — all committed to the repo, no separate IaC tool required.
+`infra/` is currently an empty folder — nothing has been provisioned yet (milestone M6). What little "infra" this stack needs is a GitHub Actions workflow file (`.github/workflows/reminders.yml` — committed, currently **disabled** until the backend is deployed), a `vercel.json`, and a Render service definition — all committed to the repo, no separate IaC tool required.
 
 **Known tradeoff of going fully free:** the Render backend sleeps when idle, so the first request after a quiet period (including the daily reminder run, and a user opening the dashboard first thing in the morning) waits ~1 minute while it wakes. If that proves unacceptable, the smallest fix is Render's paid always-on instance (~$7/mo) or Fly.io pay-as-you-go (~$2–5/mo) — no other change. Tracked as §14 Q11.
 
@@ -333,7 +334,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 - **M3 — Attachments.** Upload/download API and an attachments panel on the Edit screen. Closes FR-4.
 - **M4 — Admin screens.** Alert-threshold config screen and user-management screen. Closes FR-14 and FR-22 in full.
 - **M5 — Hardening.** Automated test suite and a CI pipeline running it on every push. Closes NFR-5.
-- **M6 — Production deployment (free-tier stack).** Create the Neon database, Cloudflare R2 bucket, and Resend/Brevo sender; deploy the frontend to Vercel and the backend to Render with env vars set in each dashboard; add the GitHub Actions workflow that calls `/internal/run-reminders` daily. Resolves §14 Q10–Q11 first.
+- **M6 — Production deployment (free-tier stack).** Repo is live at https://github.com/Player-cloud/po-delivery-tracker. Create the Neon database, Cloudflare R2 bucket, and Resend/Brevo sender; deploy the frontend to Vercel and the backend to Render with env vars per §17.5; set the two GitHub repo secrets and `gh workflow enable "Daily PO reminders"`. Resolves §14 Q10–Q11 first.
 - **M7 — stretch.** SSO, Power BI, mobile — pending answers to §14.
 
 ---
@@ -341,6 +342,97 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 ## 16. Approval
 
 **Status: Approved by project owner, 31 Aug 2026.** Implementation proceeds milestone by milestone starting with M1.
+
+---
+
+## 17. Repository & setup
+
+**Repo:** https://github.com/Player-cloud/po-delivery-tracker — private, one monorepo. Layout:
+
+```
+po-delivery-tracker/
+├── backend/          FastAPI + PostgreSQL API (Python 3.13+)
+├── frontend/         Next.js 16 app (React 19)
+├── docs/             this PRD + earlier design drafts
+├── .github/workflows/reminders.yml   daily reminder scheduler (disabled until M6)
+├── docker-compose.yml   Postgres + Mailhog + api + frontend for local dev
+├── .gitignore
+└── .gitattributes   forces LF line endings (deploy targets are Linux)
+```
+
+History note: `frontend/` was its own repo first; its three commits were re-rooted under `frontend/` and grafted in, so `git log -- frontend/…` still works. Commit SHAs changed in that rewrite; messages/authors/dates/content did not.
+
+### 17.1 Clone
+
+```bash
+git clone https://github.com/Player-cloud/po-delivery-tracker.git
+cd po-delivery-tracker
+```
+
+### 17.2 Backend (local)
+
+```bash
+cd backend
+python -m venv venv && venv\Scripts\activate      # macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env                               # then edit if needed
+```
+
+Start Postgres + Mailhog, run migrations, create the first admin:
+
+```bash
+docker compose up -d db mailhog                    # from repo root
+cd backend
+alembic upgrade head
+python -m scripts.seed_admin
+uvicorn app.main:app --reload                      # http://localhost:8000  (docs at /docs)
+```
+
+- Mailhog inbox (dev "sent" reminders): http://localhost:8025
+- Run the reminder pass by hand: `python -m scripts.run_reminders`
+- Tests: `python -m pytest tests/` (59 passing as of 31 Aug 2026)
+
+> Known snag on the original dev machine: the local Postgres volume is stamped at an Alembic revision that isn't in the repo, so `alembic upgrade head` fails there. Fix: `alembic stamp 0003` (schema already matches) or recreate the volume. A fresh clone + fresh DB has no such problem.
+
+### 17.3 Frontend (local)
+
+```bash
+cd frontend
+npm install
+npm run dev                                        # http://localhost:3000
+```
+
+Expects the backend at `http://localhost:8000` (see `frontend/lib/api.ts`).
+
+### 17.4 Full stack via Docker
+
+```bash
+docker compose up --build                          # from repo root — db, mailhog, api, frontend
+```
+
+### 17.5 Deployment secrets (M6)
+
+Set in the respective dashboards / `gh secret set`:
+
+| Where | Name | Purpose |
+|---|---|---|
+| Render (backend env) | `DATABASE_URL` | Neon **pooled** connection string |
+| Render | `SECRET_KEY` | JWT signing |
+| Render | `CRON_SECRET` | bearer token for `/internal/run-reminders` — must match the GitHub secret |
+| Render | `FRONTEND_BASE_URL` | e.g. `https://po-delivery-tracker.vercel.app` (record links in emails) |
+| Render | `EMAIL_BACKEND` + `RESEND_API_KEY` / `BREVO_API_KEY` | production email |
+| Render | `SMTP_FROM_ADDRESS` | verified sender domain |
+| Render | `REMINDER_ESCALATION_EMAIL` | overdue-escalation recipient (§14 Q3) |
+| Render | `R2_*` / S3 creds | Cloudflare R2 for attachments (M3) |
+| Vercel (frontend env) | `NEXT_PUBLIC_API_BASE_URL` | the Render backend URL *(frontend currently hardcodes localhost — see M2/M6)* |
+| GitHub → repo secrets | `BACKEND_BASE_URL` | the Render backend origin, no trailing slash |
+| GitHub → repo secrets | `CRON_SECRET` | same value as the Render one |
+
+Then re-enable the scheduler:
+
+```bash
+gh workflow enable "Daily PO reminders"
+```
 
 ---
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import AttachmentsPanel from "@/components/AttachmentsPanel";
 
 type FormState = {
   promised_delivery: string;
@@ -154,6 +155,10 @@ export default function EditPOLinePage() {
           {submitting ? "Saving..." : "Save Changes"}
         </button>
       </form>
+
+      <div className="mt-8">
+        <AttachmentsPanel poLineId={id} />
+      </div>
     </div>
   );
 }

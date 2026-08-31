@@ -1,7 +1,7 @@
 # PO Delivery Tracker — Product Requirements Document
 
 **Version:** 2.2 — Approved
-**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1 notifications + §14 Q2/Q3 built and tested; M2 dashboard & list UI built and tested; project pushed to a private GitHub monorepo (§17).
+**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1 notifications + §14 Q2/Q3, M2 dashboard & list UI, and M3 attachments all built and tested; project pushed to a private GitHub monorepo (§17). Next: M4 (admin screens).
 **Supersedes:** the original SharePoint proposal (executive-summary Word doc), and consolidates `SRS.md` + `SYSTEM_DESIGN.md` (v0.1 drafts) with a direct audit of this repository as it stood on 31 Aug 2026.
 **Repository:** https://github.com/Player-cloud/po-delivery-tracker (private) · single monorepo: `backend/`, `frontend/`, `docs/`, `.github/`. Setup steps in §17.
 **Companion wireframes:** https://claude.ai/code/artifact/846dade2-b771-45bc-bbae-1904c6e02f96
@@ -69,7 +69,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | **Email reminders** | `[DONE]` | Reminder engine, `NotificationSender` (Mailhog/Resend/Brevo), dedup log, and `POST /internal/run-reminders` — M1, tested. Production scheduler wiring is M6 |
 | Configurable alert thresholds — API | `[DONE]` | `GET/PUT /config/thresholds`, Administrator-only |
 | Configurable alert thresholds — admin UI | `[GAP]` | No screen to edit thresholds yet |
-| File attachments | `[GAP]` | DB table exists; no upload/download endpoint or UI |
+| File attachments | `[DONE]` | M3 — `Storage` abstraction (local disk / S3-compatible R2), upload/list/download/delete endpoints, attachments panel on the Edit screen |
 | User management — API | `[DONE]` | Admin-only create/list/update |
 | User management — admin UI | `[GAP]` | Backend-only; no screen yet |
 | Audit trail (created/modified by + when) | `[DONE]` | Enforced at the ORM layer |
@@ -88,7 +88,7 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | FR-1 | One record per PO line, uniquely keyed by (PO Number, PO Line) | `[DONE]` |
 | FR-2 | Reject creation of a duplicate (PO Number, PO Line) | `[DONE]` |
 | FR-3 | Store Issue Date, Promised Delivery, Delivered flag, Assigned To, Priority, Notes | `[DONE]` — Assigned To is **required** (§14 Q2): validation, `NOT NULL` (migration `0004`), required picker on both forms |
-| FR-4 | Support file attachments per PO line | `[GAP]` |
+| FR-4 | Support file attachments per PO line | `[DONE]` — upload (multipart, validated), list, download, delete; blobs in `Storage` (local dev / R2 prod) |
 | FR-5 | Automatically compute Lead Time (Promised Delivery − Issue Date) | `[DONE]` |
 | FR-6 | Automatically compute Days Remaining and Status in real time, no scheduled refresh | `[DONE]` |
 | FR-7 | Authorized users create/edit PO lines through a web form, validated client + server side | `[DONE]` |
@@ -211,8 +211,10 @@ Base path `/api/v1`. Every route except `/auth/login` requires a JWT; role check
 | GET / POST / PUT | `/users` | Administrator | live |
 | GET | `/users/assignable` | Staff, Manager, Admin | live |
 | POST | `/internal/run-reminders` | none (secret `CRON_SECRET` bearer token) | live |
-| POST | `/po-lines/{id}/attachments` | Staff, Manager, Admin | **planned** |
-| GET | `/po-lines/{id}/attachments/{aid}` | any | **planned** |
+| GET | `/po-lines/{id}/attachments` | any (own, if Staff) | live |
+| POST | `/po-lines/{id}/attachments` | Staff, Manager, Admin | live |
+| GET | `/po-lines/{id}/attachments/{aid}` | any (own, if Staff) | live |
+| DELETE | `/po-lines/{id}/attachments/{aid}` | Staff, Manager, Admin | live |
 
 ---
 
@@ -226,7 +228,7 @@ See the companion canvas: https://claude.ai/code/artifact/846dade2-b771-45bc-bba
 | Dashboard | built | M2 — KPI cards + urgency composition bar + "Needs attention" list |
 | PO Lines list | built | M2 — status filter, debounced search, colour-coded status badges |
 | New PO Line | built | now has a required Assigned To picker (§14 Q2) |
-| Edit PO Line | built | now has a required Assigned To picker; wireframe adds an attachments panel |
+| Edit PO Line | built | required Assigned To picker (M2); attachments panel — upload / download / delete (M3) |
 | Request Deletion | built | reason required |
 | Admin — Deletion Requests | built | approve/reject with notes |
 | Admin — Alert Thresholds | proposed | new screen — closes FR-14 |
@@ -274,7 +276,12 @@ New env vars (see `backend/.env.example`): `CRON_SECRET`, `FRONTEND_BASE_URL`, `
 
 ## 11. Attachments & the deletion workflow
 
-**Attachments (gap).** The `Attachment` table already exists (file name, content type, size, a backend-agnostic `blob_path`, uploader, timestamp) but nothing writes to it yet. Needed: an upload endpoint (multipart), a download endpoint, and an upload control + file list on the PO Line Edit screen. Storage is local disk in dev, **Cloudflare R2** (10 GB free, no egress fees) in production, behind an S3-compatible client so the two are interchangeable. Uploads stream straight to the object store — a serverless/free-tier backend has a read-only or ephemeral filesystem. File type/size limits are an open question — see §14.
+**Attachments (built — M3, 31 Aug 2026).** Files attach per PO line: multipart upload, list, download, and delete on `/po-lines/{id}/attachments`, with an attachments panel on the PO Line Edit screen. The bytes live behind a `Storage` interface (`backend/app/services/storage/`, same pattern as `NotificationSender`):
+
+- **local dev** — `LocalStorage` under `LOCAL_UPLOAD_DIR`
+- **production** — `S3Storage` against **Cloudflare R2** (`boto3`, S3-compatible; 10 GB free, no egress). A serverless/free-tier backend can't rely on its own filesystem, so the CRUD reads the whole upload and hands the bytes to `Storage`.
+
+The `Attachment` row keeps `blob_path` (the opaque storage key `po_lines/<id>/<uuid>_<name>`), file name, content type, size, uploader, timestamp. Uploads are validated against an extension allowlist and a size cap, both config (`ATTACHMENT_ALLOWED_EXTENSIONS`, `ATTACHMENT_MAX_BYTES`) — see §14 Q6 for the chosen defaults. Deleting a PO line cascades to its attachment rows (blobs are cleaned up on explicit delete; a PO-line hard-delete leaves orphaned blobs — acceptable at R2's free size, revisit if it matters).
 
 **Deletion workflow (built, new since the last design pass).** The original design assumed a Manager could delete a PO line outright. The shipped system does not allow that: any user who can see a line can submit a deletion request with a required reason; only an Administrator can approve or reject it. Approving deletes the PO line but the request record survives (`po_line_id` goes null, a permanent snapshot of the PO number/line stays behind) — so there's always a durable answer to "who deleted this, and why."
 
@@ -319,7 +326,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 3. ~~Should overdue reminders repeat daily indefinitely?~~ **DECIDED & BUILT (31 Aug 2026): daily for N days, then escalate.** While overdue, the assignee gets one reminder per calendar day for the first `REMINDER_OVERDUE_ESCALATION_DAYS` days (default 7). Once more than N days overdue, the daily reminder goes to `REMINDER_ESCALATION_EMAIL` instead, subject-prefixed `[ESCALATED]` and noting who the assignee is; if that address isn't configured it falls back to the assignee so nothing is lost. The `overdue_<date>` de-dupe label is unchanged, so it's still at most one send per day regardless of recipient. Reminders stop entirely once the line is Delivered.
 4. Any branding requirements for the UI or the email templates?
 5. Is Microsoft Entra ID SSO required for launch, or can it follow the initial JWT-based release?
-6. What attachment file types and maximum size should be allowed?
+6. ~~What attachment file types and maximum size should be allowed?~~ **DECIDED (31 Aug 2026, interim): 10 MB max; extensions `pdf, png, jpg, jpeg, gif, webp, doc, docx, xls, xlsx, csv, txt`.** Both are config (`ATTACHMENT_MAX_BYTES`, `ATTACHMENT_ALLOWED_EXTENSIONS`) — an administrator can change them without a deploy. Confirm the list with the employer; widen or narrow as needed.
 7. Is a mobile-responsive layout required for v1, or is desktop-only acceptable initially?
 8. Any existing vendor or business-unit data that should be modeled now rather than retrofitted later?
 9. When a deletion request is approved, should the PO line be hard-deleted, or soft-deleted/archived so reporting history stays intact?
@@ -332,7 +339,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 
 - **M1 — Notifications — DONE (31 Aug 2026).** Reminder engine, `NotificationSender` (Mailhog/Resend/Brevo), dedup log, and the `POST /internal/run-reminders` endpoint per §10, with unit + integration tests. Closes FR-10, FR-11, FR-12, FR-13; FR-14 is API-complete (admin UI in M4). The §14 Q2/Q3 follow-ups (Assigned To required; overdue escalation) are also built — see §10. Remaining for M1: wire the committed GitHub Actions workflow to a deployed backend (M6).
 - **M2 — Dashboard & list UI — DONE (31 Aug 2026).** `GET /dashboard/attention` + a "Needs attention" table and an urgency composition bar on the dashboard (`due_soon`/`later` added to the summary as a clean partition); status filter + debounced PO-number search + colour-coded `StatusBadge` on the PO Lines list; shared `lib/urgency.ts`. Also fixed en route: app pinned to light mode (white-card design was breaking under OS dark mode) and a broken "Request Deletion" link. Column sort deferred. Closes FR-16, FR-17, FR-18.
-- **M3 — Attachments.** Upload/download API and an attachments panel on the Edit screen. Closes FR-4.
+- **M3 — Attachments — DONE (31 Aug 2026).** `Storage` abstraction (local disk / S3-compatible R2), upload/list/download/delete endpoints with extension + size validation, and an attachments panel on the Edit screen. Closes FR-4; resolves §14 Q6 (interim). Verified end-to-end (curl + browser) on local disk; R2 path wired but exercised in M6.
 - **M4 — Admin screens.** Alert-threshold config screen and user-management screen. Closes FR-14 and FR-22 in full.
 - **M5 — Hardening.** Automated test suite and a CI pipeline running it on every push. Closes NFR-5.
 - **M6 — Production deployment (free-tier stack).** Repo is live at https://github.com/Player-cloud/po-delivery-tracker. Create the Neon database, Cloudflare R2 bucket, and Resend/Brevo sender; deploy the frontend to Vercel and the backend to Render with env vars per §17.5; set the two GitHub repo secrets and `gh workflow enable "Daily PO reminders"`. Resolves §14 Q10–Q11 first.
@@ -424,7 +431,7 @@ Set in the respective dashboards / `gh secret set`:
 | Render | `EMAIL_BACKEND` + `RESEND_API_KEY` / `BREVO_API_KEY` | production email |
 | Render | `SMTP_FROM_ADDRESS` | verified sender domain |
 | Render | `REMINDER_ESCALATION_EMAIL` | overdue-escalation recipient (§14 Q3) |
-| Render | `R2_*` / S3 creds | Cloudflare R2 for attachments (M3) |
+| Render | `STORAGE_BACKEND=s3` + `S3_BUCKET` / `S3_ENDPOINT_URL` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Cloudflare R2 for attachments (M3); `S3_REGION` stays `auto` |
 | Vercel (frontend env) | `NEXT_PUBLIC_API_BASE_URL` | the Render backend URL *(frontend currently hardcodes localhost — see M2/M6)* |
 | GitHub → repo secrets | `BACKEND_BASE_URL` | the Render backend origin, no trailing slash |
 | GitHub → repo secrets | `CRON_SECRET` | same value as the Render one |

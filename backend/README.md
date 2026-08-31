@@ -84,7 +84,18 @@ Actions workflow (`.github/workflows/reminders.yml`) makes this call daily.
 python -m pytest tests/
 ```
 
-## 6. Next
+## 6. Attachments (M3)
 
-Phase 4 (Backend Development) adds the FastAPI app itself — routers, Pydantic schemas,
-auth, and the endpoints listed in `docs/SYSTEM_DESIGN.md` §3.
+Files attach per PO line via `/api/v1/po-lines/{id}/attachments` (upload / list /
+download / delete). Bytes live behind `app/services/storage/`:
+
+- `STORAGE_BACKEND=local` (default) — files under `LOCAL_UPLOAD_DIR` (`./uploads`)
+- `STORAGE_BACKEND=s3` — S3-compatible; set `S3_BUCKET`, `S3_ENDPOINT_URL`,
+  `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (Cloudflare R2 in production).
+  Needs `boto3` (in `requirements.txt`, imported lazily).
+
+Upload limits: `ATTACHMENT_MAX_BYTES` (10 MB) and `ATTACHMENT_ALLOWED_EXTENSIONS`.
+
+## 7. Next
+
+M4 — admin screens (alert-threshold config, user management).

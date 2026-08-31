@@ -2,7 +2,7 @@
 Centralized application configuration.
 
 All environment-specific values (DB connection, secrets, storage backend, etc.)
-are read here and nowhere else, so switching from local dev to Azure later is a
+are read here and nowhere else, so switching from local dev to production is a
 config change, not a code change.
 """
 from functools import lru_cache
@@ -25,11 +25,21 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    # --- File storage ---
-    storage_backend: str = "local"  # local | azure_blob
+    # --- File storage (attachments, M3) ---
+    storage_backend: str = "local"  # local | s3
     local_upload_dir: str = "./uploads"
-    azure_storage_connection_string: str | None = None
-    azure_storage_container: str = "attachments"
+    # S3-compatible (Cloudflare R2 in production). Only read when storage_backend=s3.
+    s3_bucket: str = "po-tracker-attachments"
+    s3_endpoint_url: str | None = None          # e.g. https://<acct>.r2.cloudflarestorage.com
+    s3_region: str = "auto"                     # R2 uses "auto"
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    # Upload limits (PRD §14 Q6 — interim defaults, configurable without a deploy).
+    attachment_max_bytes: int = 10 * 1024 * 1024  # 10 MB
+    attachment_allowed_extensions: list[str] = [
+        "pdf", "png", "jpg", "jpeg", "gif", "webp",
+        "doc", "docx", "xls", "xlsx", "csv", "txt",
+    ]
 
     # --- Email ---
     email_backend: str = "smtp"  # smtp | resend | brevo

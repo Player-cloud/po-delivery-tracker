@@ -4,8 +4,10 @@ const API_BASE = "http://localhost:8000/api/v1";
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const token = getToken();
+  // Let the browser set Content-Type (with the multipart boundary) for FormData.
+  const isForm = options.body instanceof FormData;
   const headers = {
-    "Content-Type": "application/json",
+    ...(isForm ? {} : { "Content-Type": "application/json" }),
     ...(options.headers || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };

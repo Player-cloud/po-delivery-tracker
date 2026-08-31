@@ -111,7 +111,33 @@ def dashboard_summary(db: Session, current_user: User) -> dict:
         "total_open": len(open_lines),
         "due_today": sum(1 for l in open_lines if l.status == Status.DUE_TODAY),
         "due_this_week": sum(1 for l in open_lines if today <= l.promised_delivery <= week_from_now),
+        "due_soon": sum(1 for l in open_lines if 1 <= l.days_remaining <= 7),
+        "later": sum(1 for l in open_lines if l.days_remaining > 7),
         "overdue": sum(1 for l in open_lines if l.status == Status.OVERDUE),
         "completed": sum(1 for l in lines if l.delivered),
         "high_priority": sum(1 for l in open_lines if l.priority is not None and l.priority.value == "high"),
     }
+
+
+# Open lines within this many days of their promised date (or already past it)
+# count as "needs attention" for the dashboard list (FR-16).
+ATTENTION_WITHIN_DAYS = 7
+ATTENTION_LIMIT = 50
+
+
+def attention_lines(
+    db: Session,
+    current_user: User,
+    *,
+    within_days: int = ATTENTION_WITHIN_DAYS,
+    limit: int = ATTENTION_LIMIT,
+) -> list[POLine]:
+    """The open PO lines that need attention now — overdue first, then soonest
+    due — capped at `limit`. Same visibility rules as the list view.
+    """
+    lines = list_po_lines(db, current_user)
+    attention = [
+        l for l in lines if not l.delivered and l.days_remaining <= within_days
+    ]
+    attention.sort(key=lambda l: l.days_remaining)
+    return attention[:limit]

@@ -3,7 +3,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.models.po_line import Priority, Status
-from app.schemas.user import UserOut
+from app.schemas.user import AssignableUser
 
 
 class POLineBase(BaseModel):
@@ -76,7 +76,7 @@ class POLineOut(BaseModel):
     status: Status
 
     assigned_to_id: int | None
-    assigned_to: UserOut | None = None
+    assigned_to: AssignableUser | None = None
     created_by_id: int | None
     modified_by_id: int | None
     created_at: datetime

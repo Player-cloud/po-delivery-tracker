@@ -1,7 +1,7 @@
 # PO Delivery Tracker — Product Requirements Document
 
 **Version:** 2.2 — Approved
-**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1 notifications + §14 Q2/Q3 built and tested; project pushed to a private GitHub monorepo (§17).
+**Status:** Approved by project owner, 31 Aug 2026. Since approval: deployment target revised (§13, Azure → all-free-tier stack); M1 notifications + §14 Q2/Q3 built and tested; M2 dashboard & list UI built and tested; project pushed to a private GitHub monorepo (§17).
 **Supersedes:** the original SharePoint proposal (executive-summary Word doc), and consolidates `SRS.md` + `SYSTEM_DESIGN.md` (v0.1 drafts) with a direct audit of this repository as it stood on 31 Aug 2026.
 **Repository:** https://github.com/Player-cloud/po-delivery-tracker (private) · single monorepo: `backend/`, `frontend/`, `docs/`, `.github/`. Setup steps in §17.
 **Companion wireframes:** https://claude.ai/code/artifact/846dade2-b771-45bc-bbae-1904c6e02f96
@@ -63,9 +63,9 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | Duplicate & date validation | `[DONE]` | Server-side, independent of the UI |
 | Lead Time / Days Remaining / Status | `[DONE]` | Computed live — no refresh job |
 | Dashboard KPI cards | `[DONE]` | 6 cards, live data |
-| Dashboard "needs attention" list / chart | `[GAP]` | Was in the original mockup; only KPI cards were built |
-| PO line list — filter / search / sort (UI) | `[PARTIAL]` | API supports `?status=` & `?search=`; no controls in the UI yet |
-| Colour-coded urgency (UI) | `[GAP]` | Status shows as plain text today |
+| Dashboard "needs attention" list / chart | `[DONE]` | M2 — urgency composition bar + `GET /dashboard/attention` list, most-urgent-first |
+| PO line list — filter / search / sort (UI) | `[DONE]` | M2 — status dropdown + debounced PO-number search wired to `?status=`/`?search=`. Column sort not built (list is date-ordered) |
+| Colour-coded urgency (UI) | `[DONE]` | M2 — shared `StatusBadge` (colour + label) on the list and the dashboard; app pinned to light mode |
 | **Email reminders** | `[DONE]` | Reminder engine, `NotificationSender` (Mailhog/Resend/Brevo), dedup log, and `POST /internal/run-reminders` — M1, tested. Production scheduler wiring is M6 |
 | Configurable alert thresholds — API | `[DONE]` | `GET/PUT /config/thresholds`, Administrator-only |
 | Configurable alert thresholds — admin UI | `[GAP]` | No screen to edit thresholds yet |
@@ -100,9 +100,9 @@ A working backend (FastAPI + PostgreSQL) and frontend (Next.js) already exist an
 | FR-13 | Log every sent reminder (line, threshold, recipient, time) so nothing sends twice | `[DONE]` — `NotificationHistory` write + per-send commit; failed sends are not logged, so they retry |
 | FR-14 | Administrator can change alert thresholds without a code change | `[PARTIAL]` — `GET/PUT /config/thresholds` live and honoured by the engine; admin UI is M4 |
 | FR-15 | Dashboard KPI counts: Total Open, Due Today, Due This Week, Overdue, Completed, High Priority | `[DONE]` |
-| FR-16 | Dashboard surfaces the open lines needing attention, not counts alone | `[GAP]` |
-| FR-17 | List view supports filtering by status and searching by PO number | `[PARTIAL]` |
-| FR-18 | UI visually colour-codes lines by urgency | `[GAP]` |
+| FR-16 | Dashboard surfaces the open lines needing attention, not counts alone | `[DONE]` — `GET /dashboard/attention` + a "Needs attention" table and an urgency composition bar |
+| FR-17 | List view supports filtering by status and searching by PO number | `[DONE]` — status dropdown + debounced search on the PO Lines list |
+| FR-18 | UI visually colour-codes lines by urgency | `[DONE]` — `StatusBadge` (overdue/today/soon/on-track/delivered), colour always paired with a label |
 | FR-19 | Role-based access enforced server-side on every route | `[DONE]` |
 | FR-20 | Staff see only assigned PO lines; other roles see all | `[DONE]` |
 | FR-21 | Every write is attributable to a user and a timestamp | `[DONE]` |
@@ -205,7 +205,8 @@ Base path `/api/v1`. Every route except `/auth/login` requires a JWT; role check
 | GET | `/deletion-requests` | Administrator | live |
 | POST | `/deletion-requests/{id}/approve` | Administrator | live |
 | POST | `/deletion-requests/{id}/reject` | Administrator | live |
-| GET | `/dashboard/summary` | any | live |
+| GET | `/dashboard/summary` | any | live — now also returns `due_soon` / `later` (a non-overlapping partition of open lines, for the urgency bar) |
+| GET | `/dashboard/attention` | any (own, if Staff) | live |
 | GET / PUT | `/config/thresholds` | Administrator | live |
 | GET / POST / PUT | `/users` | Administrator | live |
 | GET | `/users/assignable` | Staff, Manager, Admin | live |
@@ -222,8 +223,8 @@ See the companion canvas: https://claude.ai/code/artifact/846dade2-b771-45bc-bba
 | Screen | Status | Note |
 |---|---|---|
 | Login | built | |
-| Dashboard | partial | wireframe adds attention list + urgency chart |
-| PO Lines list | partial | wireframe adds filters, search, colour-coded status |
+| Dashboard | built | M2 — KPI cards + urgency composition bar + "Needs attention" list |
+| PO Lines list | built | M2 — status filter, debounced search, colour-coded status badges |
 | New PO Line | built | now has a required Assigned To picker (§14 Q2) |
 | Edit PO Line | built | now has a required Assigned To picker; wireframe adds an attachments panel |
 | Request Deletion | built | reason required |
@@ -330,7 +331,7 @@ The production target is an **all-free-tier stack**, chosen so the project costs
 ## 15. Roadmap
 
 - **M1 — Notifications — DONE (31 Aug 2026).** Reminder engine, `NotificationSender` (Mailhog/Resend/Brevo), dedup log, and the `POST /internal/run-reminders` endpoint per §10, with unit + integration tests. Closes FR-10, FR-11, FR-12, FR-13; FR-14 is API-complete (admin UI in M4). The §14 Q2/Q3 follow-ups (Assigned To required; overdue escalation) are also built — see §10. Remaining for M1: wire the committed GitHub Actions workflow to a deployed backend (M6).
-- **M2 — Dashboard & list UI.** Attention list + urgency chart on the dashboard; filters, search, and colour-coding on the PO Lines list. Closes FR-16 through FR-18.
+- **M2 — Dashboard & list UI — DONE (31 Aug 2026).** `GET /dashboard/attention` + a "Needs attention" table and an urgency composition bar on the dashboard (`due_soon`/`later` added to the summary as a clean partition); status filter + debounced PO-number search + colour-coded `StatusBadge` on the PO Lines list; shared `lib/urgency.ts`. Also fixed en route: app pinned to light mode (white-card design was breaking under OS dark mode) and a broken "Request Deletion" link. Column sort deferred. Closes FR-16, FR-17, FR-18.
 - **M3 — Attachments.** Upload/download API and an attachments panel on the Edit screen. Closes FR-4.
 - **M4 — Admin screens.** Alert-threshold config screen and user-management screen. Closes FR-14 and FR-22 in full.
 - **M5 — Hardening.** Automated test suite and a CI pipeline running it on every push. Closes NFR-5.

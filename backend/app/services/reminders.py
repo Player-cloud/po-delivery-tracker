@@ -122,7 +122,7 @@ def _recipient_for(line: POLine, decision: ReminderDecision) -> str | None:
 
 
 def _build_message(line: POLine, decision: ReminderDecision, recipient: str) -> EmailMessage:
-    link = f"{settings.frontend_base_url.rstrip('/')}/po-lines/{line.id}/edit"
+    link = f"{settings.frontend_base_url.rstrip('/')}/po-lines/edit?id={line.id}"
     subject = f"PO {line.po_number} - Line {line.po_line} {decision.phrase}"
     if decision.escalate:
         subject = f"[ESCALATED] {subject}"

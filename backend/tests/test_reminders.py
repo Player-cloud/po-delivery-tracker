@@ -164,7 +164,7 @@ class TestMessageBody:
             "37",
             "Upcoming",
             "owner@corp.test",
-            "https://po.corp.test/po-lines/42/edit",
+            "https://po.corp.test/po-lines/edit?id=42",
         ):
             assert fragment in msg.text_body
 

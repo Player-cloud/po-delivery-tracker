@@ -12,7 +12,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
-    region: oregon              # match your Neon region for lower DB latency
+    region: virginia           # US East — co-located with the Neon DB (us-east-2)
     healthCheckPath: /health
     autoDeploy: true            # redeploy on push to the connected branch
     envVars:

@@ -32,6 +32,8 @@ class S3Storage(Storage):
         if missing:
             raise StorageError(f"missing S3 settings: {', '.join(missing)}")
 
+        from botocore.config import Config
+
         self._bucket = settings.s3_bucket
         self._client = boto3.client(
             "s3",
@@ -39,6 +41,10 @@ class S3Storage(Storage):
             region_name=settings.s3_region,
             aws_access_key_id=settings.s3_access_key_id,
             aws_secret_access_key=settings.s3_secret_access_key,
+            # Path-style (endpoint/bucket/key): R2's TLS cert doesn't cover the
+            # nested `bucket.<account>.r2.cloudflarestorage.com` host boto3 would
+            # use by default.
+            config=Config(s3={"addressing_style": "path"}),
         )
 
     def save(self, key: str, data: bytes, content_type: str | None = None) -> None:

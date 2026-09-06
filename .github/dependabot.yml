@@ -17,6 +17,16 @@ updates:
       frontend:
         patterns: ["*"]
     open-pull-requests-limit: 5
+    ignore:
+      # eslint-config-next@16.3.4 bundles typescript-eslint, which hard-errors
+      # on TypeScript 7.x ("typescript-eslint does not support TS 7.0"). Hold
+      # TS on 5.x until eslint-config-next ships a build that supports TS 7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # eslint-config-next@16.3.4 peer-depends on ESLint 9; ESLint 10 breaks
+      # `next lint`. Unblock when we move to an eslint-config-next that allows 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

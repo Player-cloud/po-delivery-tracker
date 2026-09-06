@@ -102,11 +102,11 @@ export default function AttachmentsPanel({ poLineId }: { poLineId: string }) {
   }
 
   return (
-    <div className="rounded border bg-white p-4">
+    <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-card">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-zinc-600">Attachments</h2>
-        <label className="cursor-pointer text-sm text-blue-600 hover:underline">
-          {busy ? "Working..." : "Upload file"}
+        <h2 className="font-display text-[13.5px] font-semibold">Attachments</h2>
+        <label className="cursor-pointer text-sm text-accent hover:underline">
+          {busy ? "Working…" : "Upload file"}
           <input
             ref={fileRef}
             type="file"
@@ -117,31 +117,31 @@ export default function AttachmentsPanel({ poLineId }: { poLineId: string }) {
         </label>
       </div>
 
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-2 text-sm text-overdue-on">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-zinc-400">Loading...</p>
+        <p className="text-sm text-faint">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-zinc-400">No files attached.</p>
+        <p className="text-sm text-faint">No files attached.</p>
       ) : (
-        <ul className="divide-y text-sm">
+        <ul className="divide-y divide-line text-sm">
           {items.map((a) => (
             <li key={a.id} className="flex items-center justify-between py-2">
               <div className="min-w-0">
                 <button
                   onClick={() => handleDownload(a)}
-                  className="truncate text-left text-blue-600 hover:underline"
+                  className="truncate text-left text-accent hover:underline"
                 >
                   {a.file_name}
                 </button>
-                <span className="ml-2 text-xs text-zinc-400">
+                <span className="ml-2 text-xs text-faint">
                   {humanSize(a.size_bytes)} · {a.uploaded_at.slice(0, 10)}
                 </span>
               </div>
               <button
                 onClick={() => handleDelete(a)}
                 disabled={busy}
-                className="ml-4 shrink-0 text-xs text-red-600 hover:underline disabled:opacity-50"
+                className="ml-4 shrink-0 text-xs text-overdue-on hover:underline disabled:opacity-50"
               >
                 Delete
               </button>

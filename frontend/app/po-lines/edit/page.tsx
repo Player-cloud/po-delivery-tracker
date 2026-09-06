@@ -1,9 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
+import { Field, control } from "@/components/Field";
+import { btnGhost, btnPrimary, card, h1 } from "@/lib/ui";
 
 type FormState = {
   promised_delivery: string;
@@ -17,7 +20,7 @@ type AssignableUser = { id: number; email: string };
 
 export default function EditPOLinePage() {
   return (
-    <Suspense fallback={<p className="p-8">Loading...</p>}>
+    <Suspense fallback={<p className="mx-auto max-w-lg p-6 text-muted">Loading…</p>}>
       <EditPOLine />
     </Suspense>
   );
@@ -105,32 +108,30 @@ function EditPOLine() {
     router.push("/po-lines");
   }
 
-  if (!id) return <p className="p-8 text-red-600">No PO line specified.</p>;
-  if (error) return <p className="p-8 text-red-600">{error}</p>;
-  if (!form) return <p className="p-8">Loading...</p>;
+  if (!id) return <p className="mx-auto max-w-lg p-6 text-overdue-on">No PO line specified.</p>;
+  if (error) return <p className="mx-auto max-w-lg p-6 text-overdue-on">{error}</p>;
+  if (!form) return <p className="mx-auto max-w-lg p-6 text-muted">Loading…</p>;
 
   return (
-    <div className="mx-auto max-w-lg p-8">
-      <h1 className="mb-4 text-xl font-semibold">Edit PO Line</h1>
+    <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-6 sm:px-6">
+      <h1 className={h1}>Edit PO Line</h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="text-sm text-zinc-600">
-          Promised Delivery
+      <form onSubmit={handleSubmit} className={`${card} flex flex-col gap-4 p-6`}>
+        <Field label="Promised delivery">
           <input
             type="date"
             value={form.promised_delivery}
             onChange={(e) => updateField("promised_delivery", e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className={control}
             required
           />
-        </label>
+        </Field>
 
-        <label className="text-sm text-zinc-600">
-          Assigned To
+        <Field label="Assigned to" hint="Reminders go to this person.">
           <select
             value={form.assigned_to_id}
             onChange={(e) => updateField("assigned_to_id", e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className={control}
             required
           >
             <option value="" disabled>
@@ -142,49 +143,53 @@ function EditPOLine() {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <select
-          value={form.priority}
-          onChange={(e) => updateField("priority", e.target.value)}
-          className="rounded border px-3 py-2"
-        >
-          <option value="">Priority (none)</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
+        <Field label="Priority">
+          <select
+            value={form.priority}
+            onChange={(e) => updateField("priority", e.target.value)}
+            className={control}
+          >
+            <option value="">None</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </Field>
 
-        <textarea
-          placeholder="Notes"
-          value={form.notes}
-          onChange={(e) => updateField("notes", e.target.value)}
-          className="rounded border px-3 py-2"
-        />
+        <Field label="Notes">
+          <textarea
+            value={form.notes}
+            onChange={(e) => updateField("notes", e.target.value)}
+            className={control}
+            rows={3}
+          />
+        </Field>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2.5 text-sm">
           <input
             type="checkbox"
             checked={form.delivered}
             onChange={(e) => updateField("delivered", e.target.checked)}
+            className="h-4 w-4 accent-accent"
           />
-          Delivered
+          Mark as delivered
         </label>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-overdue-on">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800 disabled:opacity-50"
-        >
-          {submitting ? "Saving..." : "Save Changes"}
-        </button>
+        <div className="flex gap-2">
+          <button type="submit" disabled={submitting} className={btnPrimary}>
+            {submitting ? "Saving…" : "Save changes"}
+          </button>
+          <Link href="/po-lines" className={btnGhost}>
+            Cancel
+          </Link>
+        </div>
       </form>
 
-      <div className="mt-8">
-        <AttachmentsPanel poLineId={id} />
-      </div>
+      <AttachmentsPanel poLineId={id} />
     </div>
   );
 }

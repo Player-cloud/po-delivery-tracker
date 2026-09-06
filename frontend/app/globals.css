@@ -1,23 +1,123 @@
 @import "tailwindcss";
 
-/* The app's UI is built for a light surface (white cards, zinc text). Pin the
-   colour scheme to light so an OS/browser dark-mode preference doesn't leave
-   white cards on a black page with washed-out text. */
+/* ------------------------------------------------------------------ *
+ * Design tokens — warm workspace. Light only (pinned; the app is
+ * built for a white surface, no dark palette).
+ * ------------------------------------------------------------------ */
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
+
+  --page: oklch(0.985 0.006 90);
+  --surface: #ffffff;
+  --surface-tint: oklch(0.975 0.008 195);
+  --ink: oklch(0.27 0.012 70);
+  --muted: oklch(0.5 0.01 70);
+  --faint: oklch(0.62 0.01 70);
+  --line: oklch(0.92 0.008 195);
+
+  --accent: oklch(0.55 0.11 195);
+  --accent-hover: oklch(0.46 0.11 195);
+  --accent-soft: oklch(0.95 0.02 195);
+  --accent-on: #ffffff;
+
+  --strip: oklch(0.29 0.012 70);
+  --strip-ink: oklch(0.86 0.008 80);
+  --strip-faint: oklch(0.6 0.01 75);
+
+  /* status: fill (dots / bar), tint (pill bg), on (pill text) */
+  --overdue: oklch(0.6 0.16 25);
+  --overdue-tint: oklch(0.96 0.04 25);
+  --overdue-on: oklch(0.46 0.15 25);
+  --today: oklch(0.7 0.14 55);
+  --today-tint: oklch(0.96 0.05 55);
+  --today-on: oklch(0.5 0.13 45);
+  --soon: oklch(0.8 0.12 88);
+  --soon-tint: oklch(0.96 0.035 88);
+  --soon-on: oklch(0.47 0.1 80);
+  --ontrack: oklch(0.63 0.12 165);
+  --ontrack-tint: oklch(0.96 0.03 165);
+  --ontrack-on: oklch(0.42 0.11 165);
+  --done: oklch(0.72 0.006 80);
+  --done-tint: oklch(0.95 0.004 80);
+  --done-on: oklch(0.45 0.006 80);
+
+  --shadow-card: 0 2px 10px oklch(0.65 0.03 90 / 0.06);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-tint: var(--surface-tint);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-on: var(--accent-on);
+  --color-strip: var(--strip);
+  --color-strip-ink: var(--strip-ink);
+  --color-strip-faint: var(--strip-faint);
+
+  --color-overdue: var(--overdue);
+  --color-overdue-tint: var(--overdue-tint);
+  --color-overdue-on: var(--overdue-on);
+  --color-today: var(--today);
+  --color-today-tint: var(--today-tint);
+  --color-today-on: var(--today-on);
+  --color-soon: var(--soon);
+  --color-soon-tint: var(--soon-tint);
+  --color-soon-on: var(--soon-on);
+  --color-ontrack: var(--ontrack);
+  --color-ontrack-tint: var(--ontrack-tint);
+  --color-ontrack-on: var(--ontrack-on);
+  --color-done: var(--done);
+  --color-done-tint: var(--done-tint);
+  --color-done-on: var(--done-on);
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), var(--font-body), system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+
+  --radius-card: 15px;
+  --radius-control: 10px;
+
+  --shadow-card: var(--shadow-card);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion — subtle, functional, and off for reduced-motion.
+ * ------------------------------------------------------------------ */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.animate-rise { animation: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-grow-x { transform-origin: left; animation: grow-x 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Consistent, visible focus for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
 }

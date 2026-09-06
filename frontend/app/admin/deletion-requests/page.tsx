@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
+import { card, h1, page } from "@/lib/ui";
 
 type DeletionRequest = {
   id: number;
@@ -76,94 +77,118 @@ function DeletionRequests() {
     void reload();
   }
 
-  if (!loaded && !error) return <p className="p-8">Loading...</p>;
-  if (error) return <p className="p-8 text-red-600">{error}</p>;
+  if (!loaded && !error) return <p className={`${page} text-muted`}>Loading…</p>;
+  if (error) return <p className={`${page} text-overdue-on`}>{error}</p>;
 
   const pending = requests.filter((r) => r.status === "pending");
   const resolved = requests.filter((r) => r.status !== "pending");
 
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-xl font-semibold">Deletion Requests</h1>
+    <div className={`${page} flex flex-col gap-5`}>
+      <h1 className={h1}>Deletion requests</h1>
 
-      <h2 className="mb-2 text-sm font-semibold text-zinc-600">Pending ({pending.length})</h2>
-      <table className="mb-8 w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b text-xs uppercase text-zinc-400">
-            <th className="py-2 font-medium">PO</th>
-            <th className="font-medium">Reason</th>
-            <th className="font-medium">Requested By</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {pending.map((r) => (
-            <tr key={r.id} className="border-b">
-              <td className="py-2">
-                {r.po_number}-{r.po_line}
-              </td>
-              <td>{r.reason}</td>
-              <td>{r.requested_by.email}</td>
-              <td className="flex gap-3 py-2">
-                <button
-                  onClick={() => handleReview(r.id, "approve")}
-                  className="text-green-700 hover:underline"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleReview(r.id, "reject")}
-                  className="text-red-600 hover:underline"
-                >
-                  Reject
-                </button>
-              </td>
-            </tr>
-          ))}
-          {pending.length === 0 && (
-            <tr>
-              <td colSpan={4} className="py-4 text-zinc-400">
-                Nothing pending.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">
+          Pending ({pending.length})
+        </h2>
+        <div className={`${card} overflow-hidden`}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-[12.5px]">
+              <thead>
+                <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                  <th className="px-5 py-3 font-medium">PO</th>
+                  <th className="px-5 py-3 font-medium">Reason</th>
+                  <th className="px-5 py-3 font-medium">Requested by</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map((r) => (
+                  <tr key={r.id} className="border-t border-line/70">
+                    <td className="px-5 py-3 font-mono">
+                      {r.po_number}-{r.po_line}
+                    </td>
+                    <td className="px-5 py-3">{r.reason}</td>
+                    <td className="px-5 py-3 text-muted">{r.requested_by.email}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleReview(r.id, "approve")}
+                          className="text-xs font-medium text-ontrack-on hover:underline"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReview(r.id, "reject")}
+                          className="text-xs font-medium text-overdue-on hover:underline"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pending.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-6 text-center text-faint">
+                      Nothing pending.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-      <h2 className="mb-2 text-sm font-semibold text-zinc-600">History</h2>
-      <table className="w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b text-xs uppercase text-zinc-400">
-            <th className="py-2 font-medium">PO</th>
-            <th className="font-medium">Status</th>
-            <th className="font-medium">Reason</th>
-            <th className="font-medium">Reviewed By</th>
-            <th className="font-medium">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {resolved.map((r) => (
-            <tr key={r.id} className="border-b">
-              <td className="py-2">
-                {r.po_number}-{r.po_line}
-              </td>
-              <td className={r.status === "approved" ? "text-red-600" : "text-zinc-600"}>
-                {r.status}
-              </td>
-              <td>{r.reason}</td>
-              <td>{r.reviewed_by?.email}</td>
-              <td>{r.resolution_notes}</td>
-            </tr>
-          ))}
-          {resolved.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-4 text-zinc-400">
-                No history yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">History</h2>
+        <div className={`${card} overflow-hidden`}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-[12.5px]">
+              <thead>
+                <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                  <th className="px-5 py-3 font-medium">PO</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium">Reason</th>
+                  <th className="px-5 py-3 font-medium">Reviewed by</th>
+                  <th className="px-5 py-3 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resolved.map((r) => (
+                  <tr key={r.id} className="border-t border-line/70">
+                    <td className="px-5 py-3 font-mono">
+                      {r.po_number}-{r.po_line}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          r.status === "approved"
+                            ? "bg-overdue-tint text-overdue-on"
+                            : "bg-done-tint text-done-on"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">{r.reason}</td>
+                    <td className="px-5 py-3 text-muted">{r.reviewed_by?.email}</td>
+                    <td className="px-5 py-3 text-muted">{r.resolution_notes}</td>
+                  </tr>
+                ))}
+                {resolved.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-6 text-center text-faint">
+                      No history yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

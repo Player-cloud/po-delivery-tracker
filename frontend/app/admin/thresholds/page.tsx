@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
+import { btnGhost, btnPrimary, card, h1, input } from "@/lib/ui";
 
 export default function ThresholdsPage() {
   return (
@@ -79,59 +80,58 @@ function Thresholds() {
     setSaved(true);
   }
 
-  if (!loaded && !error) return <p className="p-8">Loading...</p>;
+  if (!loaded && !error) return <p className="mx-auto max-w-lg p-6 text-muted">Loading…</p>;
 
   return (
-    <div className="mx-auto max-w-lg p-8">
-      <h1 className="mb-2 text-xl font-semibold">Alert Thresholds</h1>
-      <p className="mb-6 text-sm text-zinc-600">
+    <div className="mx-auto max-w-lg px-4 py-6 sm:px-6">
+      <h1 className={`${h1} mb-1`}>Alert Thresholds</h1>
+      <p className="mb-6 text-sm text-muted">
         Days before a PO line&rsquo;s promised date to send a reminder. Overdue lines
         are reminded daily regardless.
       </p>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {days.map((d) => (
-          <span
-            key={d}
-            className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800 ring-1 ring-inset ring-blue-600/20"
-          >
-            {d} {d === 1 ? "day" : "days"}
-            <button
-              onClick={() => removeDay(d)}
-              className="text-blue-500 hover:text-blue-900"
-              aria-label={`Remove ${d}`}
+      <div className={`${card} p-5`}>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {days.map((d) => (
+            <span
+              key={d}
+              className="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-sm text-accent-hover"
             >
-              ×
-            </button>
-          </span>
-        ))}
-        {days.length === 0 && <span className="text-sm text-zinc-400">No thresholds.</span>}
-      </div>
+              {d} {d === 1 ? "day" : "days"}
+              <button
+                onClick={() => removeDay(d)}
+                className="text-accent hover:text-accent-hover"
+                aria-label={`Remove ${d} day threshold`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {days.length === 0 && <span className="text-sm text-faint">No thresholds.</span>}
+        </div>
 
-      <form onSubmit={addDay} className="mb-6 flex gap-2">
-        <input
-          type="number"
-          min={0}
-          placeholder="Add days"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className="w-32 rounded border px-3 py-2 text-sm"
-        />
-        <button type="submit" className="rounded border px-3 py-2 text-sm hover:bg-zinc-50">
-          Add
+        <form onSubmit={addDay} className="mb-5 flex gap-2">
+          <input
+            type="number"
+            min={0}
+            placeholder="Add days"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className={`${input} w-32`}
+            aria-label="Days before due to add"
+          />
+          <button type="submit" className={btnGhost}>
+            Add
+          </button>
+        </form>
+
+        {error && <p className="mb-3 text-sm text-overdue-on">{error}</p>}
+        {saved && <p className="mb-3 text-sm text-ontrack-on">Saved.</p>}
+
+        <button onClick={save} disabled={saving} className={btnPrimary}>
+          {saving ? "Saving…" : "Save thresholds"}
         </button>
-      </form>
-
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-      {saved && <p className="mb-3 text-sm text-green-700">Saved.</p>}
-
-      <button
-        onClick={save}
-        disabled={saving}
-        className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800 disabled:opacity-50"
-      >
-        {saving ? "Saving..." : "Save thresholds"}
-      </button>
+      </div>
     </div>
   );
 }

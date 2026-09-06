@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import RequireAdmin from "@/components/RequireAdmin";
 import { useAuth } from "@/lib/useAuth";
+import { btnPrimary, card, h1, input, page } from "@/lib/ui";
 
 type User = {
   id: number;
@@ -102,15 +103,15 @@ function Users() {
     if (pw) void patch(u.id, { password: pw });
   }
 
-  if (!loaded && !error) return <p className="p-8">Loading...</p>;
+  if (!loaded && !error) return <p className={`${page} text-muted`}>Loading…</p>;
 
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-xl font-semibold">Users</h1>
+    <div className={`${page} flex flex-col gap-5`}>
+      <h1 className={h1}>Users</h1>
 
       <form
         onSubmit={handleCreate}
-        className="mb-8 flex flex-wrap items-end gap-3 rounded border bg-white p-4"
+        className={`${card} flex flex-wrap items-end gap-3 p-4`}
       >
         <input
           type="email"
@@ -118,20 +119,23 @@ function Users() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="rounded border px-3 py-2 text-sm"
+          className={input}
+          aria-label="New user email"
         />
         <input
           type="password"
-          placeholder="Temp password"
+          placeholder="Temp password (10+ chars)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="rounded border px-3 py-2 text-sm"
+          className={input}
+          aria-label="Temporary password"
         />
         <select
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="rounded border px-3 py-2 text-sm"
+          className={input}
+          aria-label="Role"
         >
           {ROLES.map((r) => (
             <option key={r} value={r}>
@@ -139,77 +143,76 @@ function Users() {
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          disabled={creating}
-          className="rounded bg-black px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
-        >
-          {creating ? "Adding..." : "Add user"}
+        <button type="submit" disabled={creating} className={btnPrimary}>
+          {creating ? "Adding…" : "Add user"}
         </button>
       </form>
 
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-overdue-on">{error}</p>}
 
-      <table className="w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b text-xs uppercase text-zinc-400">
-            <th className="py-2 font-medium">Email</th>
-            <th className="font-medium">Role</th>
-            <th className="font-medium">Active</th>
-            <th className="font-medium">Created</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => {
-            const isSelf = myId === u.id;
-            return (
-              <tr key={u.id} className="border-b">
-                <td className="py-2">
-                  {u.email}
-                  {isSelf && <span className="ml-2 text-xs text-zinc-400">(you)</span>}
-                </td>
-                <td>
-                  <select
-                    value={u.role}
-                    disabled={isSelf}
-                    onChange={(e) => patch(u.id, { role: e.target.value })}
-                    className="rounded border px-2 py-1 text-sm disabled:opacity-50"
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <button
-                    disabled={isSelf}
-                    onClick={() => patch(u.id, { active: !u.active })}
-                    className={`rounded px-2 py-0.5 text-xs ring-1 ring-inset disabled:opacity-50 ${
-                      u.active
-                        ? "bg-green-50 text-green-700 ring-green-600/20"
-                        : "bg-zinc-100 text-zinc-500 ring-zinc-400/30"
-                    }`}
-                  >
-                    {u.active ? "active" : "inactive"}
-                  </button>
-                </td>
-                <td className="tabular-nums text-zinc-500">{u.created_at.slice(0, 10)}</td>
-                <td>
-                  <button
-                    onClick={() => resetPassword(u)}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    Reset password
-                  </button>
-                </td>
+      <div className={`${card} overflow-hidden`}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-[12.5px]">
+            <thead>
+              <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                <th className="px-5 py-3 font-medium">Email</th>
+                <th className="px-5 py-3 font-medium">Role</th>
+                <th className="px-5 py-3 font-medium">Active</th>
+                <th className="px-5 py-3 font-medium">Created</th>
+                <th className="px-5 py-3" />
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                const isSelf = myId === u.id;
+                return (
+                  <tr key={u.id} className="border-t border-line/70">
+                    <td className="px-5 py-3">
+                      {u.email}
+                      {isSelf && <span className="ml-2 text-xs text-faint">(you)</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      <select
+                        value={u.role}
+                        disabled={isSelf}
+                        onChange={(e) => patch(u.id, { role: e.target.value })}
+                        className="rounded-md border border-line px-2 py-1 text-[12.5px] disabled:opacity-50"
+                        aria-label={`Role for ${u.email}`}
+                      >
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-5 py-3">
+                      <button
+                        disabled={isSelf}
+                        onClick={() => patch(u.id, { active: !u.active })}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium disabled:opacity-50 ${
+                          u.active ? "bg-ontrack-tint text-ontrack-on" : "bg-done-tint text-done-on"
+                        }`}
+                      >
+                        {u.active ? "active" : "inactive"}
+                      </button>
+                    </td>
+                    <td className="px-5 py-3 font-mono text-muted">{u.created_at.slice(0, 10)}</td>
+                    <td className="px-5 py-3">
+                      <button
+                        onClick={() => resetPassword(u)}
+                        className="text-xs text-accent hover:underline"
+                      >
+                        Reset password
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

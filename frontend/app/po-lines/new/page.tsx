@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { extractErrorMessage } from "@/lib/errors";
+import { Field, control } from "@/components/Field";
+import { btnGhost, btnPrimary, card, h1 } from "@/lib/ui";
 
 type FormState = {
   po_number: string;
@@ -49,7 +53,7 @@ export default function NewPOLinePage() {
     };
   }, []);
 
-  function updateField(field: keyof FormState, value: string) {
+  function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -57,8 +61,7 @@ export default function NewPOLinePage() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
-    const response = await apiFetch("/po-lines", {
+    const res = await apiFetch("/po-lines", {
       method: "POST",
       body: JSON.stringify({
         po_number: form.po_number,
@@ -70,68 +73,67 @@ export default function NewPOLinePage() {
         notes: form.notes || null,
       }),
     });
-
     setSubmitting(false);
-
-    if (!response.ok) {
-      const data = await response.json();
-      setError(extractErrorMessage(data));
+    if (!res.ok) {
+      setError(extractErrorMessage(await res.json().catch(() => ({}))));
       return;
     }
-
     router.push("/po-lines");
   }
 
   return (
-    <div className="mx-auto max-w-lg p-8">
-      <h1 className="mb-4 text-xl font-semibold">New PO Line</h1>
+    <div className="mx-auto max-w-lg px-4 py-6 sm:px-6">
+      <h1 className={`${h1} mb-4`}>New PO Line</h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input
-          placeholder="PO Number"
-          value={form.po_number}
-          onChange={(e) => updateField("po_number", e.target.value)}
-          className="rounded border px-3 py-2"
-          required
-        />
+      <form onSubmit={handleSubmit} className={`${card} flex flex-col gap-4 p-6`}>
+        <div className="grid grid-cols-[1fr_120px] gap-3">
+          <Field label="PO Number">
+            <input
+              value={form.po_number}
+              onChange={(e) => set("po_number", e.target.value)}
+              className={control}
+              required
+              autoFocus
+            />
+          </Field>
+          <Field label="Line">
+            <input
+              type="number"
+              min={1}
+              value={form.po_line}
+              onChange={(e) => set("po_line", e.target.value)}
+              className={control}
+              required
+            />
+          </Field>
+        </div>
 
-        <input
-          type="number"
-          placeholder="PO Line"
-          value={form.po_line}
-          onChange={(e) => updateField("po_line", e.target.value)}
-          className="rounded border px-3 py-2"
-          required
-        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Issue date">
+            <input
+              type="date"
+              value={form.issue_date}
+              onChange={(e) => set("issue_date", e.target.value)}
+              className={control}
+              required
+            />
+          </Field>
+          <Field label="Promised delivery">
+            <input
+              type="date"
+              value={form.promised_delivery}
+              onChange={(e) => set("promised_delivery", e.target.value)}
+              className={control}
+              required
+            />
+          </Field>
+        </div>
 
-        <label className="text-sm text-zinc-600">
-          Issue Date
-          <input
-            type="date"
-            value={form.issue_date}
-            onChange={(e) => updateField("issue_date", e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
-            required
-          />
-        </label>
-
-        <label className="text-sm text-zinc-600">
-          Promised Delivery
-          <input
-            type="date"
-            value={form.promised_delivery}
-            onChange={(e) => updateField("promised_delivery", e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
-            required
-          />
-        </label>
-
-        <label className="text-sm text-zinc-600">
-          Assigned To
+        <Field label="Assigned to" hint="Reminders go to this person.">
           <select
             value={form.assigned_to_id}
-            onChange={(e) => updateField("assigned_to_id", e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            onChange={(e) => set("assigned_to_id", e.target.value)}
+            className={control}
             required
           >
             <option value="" disabled>
@@ -143,51 +145,41 @@ export default function NewPOLinePage() {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <select
-          value={form.priority}
-          onChange={(e) => updateField("priority", e.target.value)}
-          className="rounded border px-3 py-2"
-        >
-          <option value="">Priority (none)</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
+        <Field label="Priority">
+          <select
+            value={form.priority}
+            onChange={(e) => set("priority", e.target.value)}
+            className={control}
+          >
+            <option value="">None</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </Field>
 
-        <textarea
-          placeholder="Notes"
-          value={form.notes}
-          onChange={(e) => updateField("notes", e.target.value)}
-          className="rounded border px-3 py-2"
-        />
+        <Field label="Notes">
+          <textarea
+            value={form.notes}
+            onChange={(e) => set("notes", e.target.value)}
+            className={control}
+            rows={3}
+          />
+        </Field>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-overdue-on">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded bg-black px-4 py-2 text-white hover:bg-zinc-800 disabled:opacity-50"
-        >
-          {submitting ? "Saving..." : "Create PO Line"}
-        </button>
+        <div className="flex gap-2">
+          <button type="submit" disabled={submitting} className={btnPrimary}>
+            {submitting ? "Saving…" : "Create PO Line"}
+          </button>
+          <Link href="/po-lines" className={btnGhost}>
+            Cancel
+          </Link>
+        </div>
       </form>
     </div>
   );
-}
-
-// FastAPI returns two different error shapes depending on what went wrong:
-// - Pydantic validation failures (422): { detail: [{ msg, loc, type }, ...] }
-// - Your own HTTPException calls, e.g. the duplicate check (409/403/404):
-//   { detail: "some string" }
-function extractErrorMessage(data: unknown): string {
-  if (typeof data === "object" && data !== null && "detail" in data) {
-    const detail = (data as { detail: unknown }).detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      return detail.map((d: { msg?: string }) => d.msg).join(", ");
-    }
-  }
-  return "Something went wrong";
 }

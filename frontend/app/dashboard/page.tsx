@@ -5,9 +5,13 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import UrgencyBar from "@/components/UrgencyBar";
+import GettingStarted from "@/components/GettingStarted";
+import TourOverlay from "@/components/TourOverlay";
 import { daysRemainingLabel } from "@/lib/urgency";
+import { useCountUp } from "@/hooks/useCountUp";
+import { card, h1, page } from "@/lib/ui";
 
-type DashboardSummary = {
+type Summary = {
   total_open: number;
   due_today: number;
   due_this_week: number;
@@ -25,130 +29,167 @@ type AttentionLine = {
   promised_delivery: string;
   days_remaining: number;
   delivered: boolean;
-  priority: string | null;
   assigned_to: { id: number; email: string } | null;
 };
 
-const CARDS: { key: keyof DashboardSummary; label: string; accent: string }[] = [
-  { key: "total_open", label: "Total Open Lines", accent: "border-t-blue-500" },
-  { key: "due_today", label: "Due Today", accent: "border-t-orange-500" },
-  { key: "due_this_week", label: "Due This Week", accent: "border-t-yellow-500" },
-  { key: "overdue", label: "Overdue", accent: "border-t-red-500" },
-  { key: "completed", label: "Completed", accent: "border-t-green-500" },
-  { key: "high_priority", label: "High Priority", accent: "border-t-red-800" },
+const KPIS: { key: keyof Summary; label: string; tone?: "danger" }[] = [
+  { key: "due_today", label: "Due today" },
+  { key: "overdue", label: "Overdue", tone: "danger" },
+  { key: "total_open", label: "Total open" },
+  { key: "high_priority", label: "High priority" },
 ];
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [attention, setAttention] = useState<AttentionLine[] | null>(null);
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      apiFetch("/dashboard/summary").then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      }),
-      apiFetch("/dashboard/attention").then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      }),
-    ])
-      .then(([s, a]) => {
+    let ignore = false;
+    (async () => {
+      try {
+        const [s, a, me] = await Promise.all([
+          apiFetch("/dashboard/summary").then((r) => (r.ok ? r.json() : Promise.reject())),
+          apiFetch("/dashboard/attention").then((r) => (r.ok ? r.json() : Promise.reject())),
+          apiFetch("/auth/me").then((r) => (r.ok ? r.json() : null)),
+        ]);
+        if (ignore) return;
         setSummary(s);
         setAttention(a);
-      })
-      .catch(() => setError("Could not load dashboard"));
+        if (me?.email) setName(me.email.split("@")[0]);
+      } catch {
+        if (!ignore) setError("Could not load the dashboard");
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  if (error) return <p className="p-8 text-red-600">{error}</p>;
-  if (!summary || !attention) return <p className="p-8">Loading...</p>;
+  if (error) return <p className={`${page} text-overdue-on`}>{error}</p>;
+  if (!summary || !attention) return <p className={`${page} text-muted`}>Loading…</p>;
 
   return (
-    <div className="p-8">
-      <h1 className="mb-6 text-xl font-semibold">Dashboard</h1>
+    <div className={`${page} flex flex-col gap-5`}>
+      <div className="animate-rise flex flex-col gap-0.5">
+        <h1 className={h1}>
+          {greeting()}
+          {name && `, ${name}`}
+        </h1>
+        <span className="text-[12.5px] text-muted">
+          {new Date().toLocaleDateString(undefined, {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+        </span>
+      </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {CARDS.map((card) => (
-          <div
-            key={card.key}
-            className={`rounded border-t-4 bg-white p-6 shadow ${card.accent}`}
-          >
-            <p className="text-3xl font-bold tabular-nums">{summary[card.key]}</p>
-            <p className="text-sm text-zinc-600">{card.label}</p>
+      <div className="grid gap-4 md:grid-cols-[288px_1fr]">
+        <GettingStarted onStartTour={() => setTourOpen(true)} />
+
+        <div className="grid gap-3.5 sm:grid-cols-2">
+          {KPIS.map((k, i) => (
+            <KpiCard key={k.key} label={k.label} value={summary[k.key]} tone={k.tone} delay={i * 60} />
+          ))}
+          <div className="sm:col-span-2">
+            <UrgencyBar counts={summary} />
           </div>
-        ))}
+        </div>
       </div>
 
-      <div className="mt-6">
-        <UrgencyBar counts={summary} />
-      </div>
-
-      <div className="mt-6 rounded border bg-white shadow">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-sm font-medium text-zinc-600">
-            Needs attention
-            <span className="ml-2 text-zinc-400">
-              (overdue or due within 7 days)
-            </span>
-          </h2>
-          <Link href="/po-lines" className="text-sm text-blue-600 hover:underline">
-            All PO lines
+      <div className={`${card} animate-rise overflow-hidden`}>
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <span className="font-display text-[13.5px] font-semibold">Needs attention</span>
+          <Link href="/po-lines" className="text-xs text-accent hover:underline">
+            View all &rarr;
           </Link>
         </div>
 
         {attention.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-zinc-500">
-            Nothing needs attention right now.
-          </p>
+          <p className="px-5 py-8 text-sm text-faint">Nothing needs attention right now.</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase text-zinc-400">
-              <tr className="border-b">
-                <th className="px-6 py-2 font-medium">PO / Line</th>
-                <th className="px-6 py-2 font-medium">Promised</th>
-                <th className="px-6 py-2 font-medium">Remaining</th>
-                <th className="px-6 py-2 font-medium">Assigned</th>
-                <th className="px-6 py-2 font-medium">Status</th>
-                <th className="px-6 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {attention.map((l) => (
-                <tr key={l.id} className="border-b last:border-0">
-                  <td className="px-6 py-2 font-medium">
-                    {l.po_number}
-                    <span className="text-zinc-400"> · {l.po_line}</span>
-                  </td>
-                  <td className="px-6 py-2 tabular-nums text-zinc-600">
-                    {l.promised_delivery}
-                  </td>
-                  <td className="px-6 py-2 tabular-nums text-zinc-600">
-                    {daysRemainingLabel(l.days_remaining)}
-                  </td>
-                  <td className="px-6 py-2 text-zinc-600">
-                    {l.assigned_to?.email ?? "—"}
-                  </td>
-                  <td className="px-6 py-2">
-                    <StatusBadge
-                      delivered={l.delivered}
-                      days_remaining={l.days_remaining}
-                    />
-                  </td>
-                  <td className="px-6 py-2">
-                    <Link
-                      href={`/po-lines/edit?id=${l.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </Link>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-[12.5px]">
+              <thead>
+                <tr className="text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                  <th className="px-5 py-2.5 font-medium">PO / Line</th>
+                  <th className="px-5 py-2.5 font-medium">Promised</th>
+                  <th className="px-5 py-2.5 font-medium">Remaining</th>
+                  <th className="px-5 py-2.5 font-medium">Assignee</th>
+                  <th className="px-5 py-2.5 font-medium">Status</th>
+                  <th className="px-5 py-2.5" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {attention.map((l) => (
+                  <tr key={l.id} className="border-t border-line/70 hover:bg-surface-tint">
+                    <td className="px-5 py-3 font-semibold">
+                      {l.po_number} <span className="text-faint">&middot; {l.po_line}</span>
+                    </td>
+                    <td className="px-5 py-3 font-mono text-muted">{l.promised_delivery}</td>
+                    <td className="px-5 py-3 text-muted">{daysRemainingLabel(l.days_remaining)}</td>
+                    <td className="px-5 py-3 text-muted">{l.assigned_to?.email ?? "—"}</td>
+                    <td className="px-5 py-3">
+                      <StatusBadge delivered={l.delivered} days_remaining={l.days_remaining} />
+                    </td>
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/po-lines/edit?id=${l.id}`}
+                        className="text-accent hover:underline"
+                      >
+                        Edit
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      {tourOpen && <TourOverlay onClose={() => setTourOpen(false)} />}
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  tone,
+  delay,
+}: {
+  label: string;
+  value: number;
+  tone?: "danger";
+  delay: number;
+}) {
+  const shown = useCountUp(value);
+  return (
+    <div
+      className={`animate-rise ${card} flex flex-col gap-1 p-4 ${
+        tone === "danger" ? "border-overdue/25 bg-overdue-tint" : ""
+      }`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <span className={`text-xs ${tone === "danger" ? "text-overdue-on" : "text-muted"}`}>
+        {label}
+      </span>
+      <span
+        className={`font-display text-[28px] font-semibold tabular-nums ${
+          tone === "danger" ? "text-overdue-on" : ""
+        }`}
+      >
+        {shown}
+      </span>
     </div>
   );
 }

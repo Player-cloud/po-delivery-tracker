@@ -10,9 +10,9 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
 
   if (!loggedIn) {
     return (
-      <p className="p-8 text-zinc-600">
+      <p className="p-8 text-muted">
         Please{" "}
-        <Link href="/login" className="text-blue-600 hover:underline">
+        <Link href="/login" className="text-accent hover:underline">
           log in
         </Link>
         .
@@ -20,7 +20,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
     );
   }
   if (!isAdmin) {
-    return <p className="p-8 text-red-600">Administrators only.</p>;
+    return <p className="p-8 text-overdue-on">Administrators only.</p>;
   }
   return <>{children}</>;
 }

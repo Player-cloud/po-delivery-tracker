@@ -9,7 +9,7 @@ Usage (from backend/, with venv active and .env configured):
 
 from getpass import getpass
 
-from app.core.security import hash_password
+from app.core.security import WeakPasswordError, hash_password
 from app.db.session import SessionLocal
 from app.models.user import User, UserRole
 
@@ -20,14 +20,18 @@ def main() -> None:
         email = input("Admin email: ").strip()
         password = getpass("Admin password: ").strip()
 
+        try:
+            password_hash = hash_password(password)
+        except WeakPasswordError as exc:
+            print(f"Weak password: {exc}")
+            return
+
         existing = db.query(User).filter(User.email == email).first()
         if existing:
             print(f"A user with email {email} already exists (id={existing.id}). Nothing to do.")
             return
 
-        admin = User(
-            email=email, password_hash=hash_password(password), role=UserRole.ADMINISTRATOR
-        )
+        admin = User(email=email, password_hash=password_hash, role=UserRole.ADMINISTRATOR)
         db.add(admin)
         db.commit()
         print(f"Created administrator {email} (id={admin.id}).")

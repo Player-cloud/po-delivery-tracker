@@ -141,9 +141,25 @@ It prompts for email + password. Every other user is then created from the in-ap
 
 ---
 
+## Before real staff use it
+
+Work through **`docs/PRE_LAUNCH_CHECKLIST.md`** — most importantly: rotate the
+secrets that went through setup chat, get a real sending domain, and accept the
+sub-processor DPAs.
+
+## Optional: error tracking (Sentry)
+
+1. Create a project at <https://sentry.io> (free tier). Grab the **DSN**.
+2. Backend: add `SENTRY_DSN` in Render → redeploy.
+3. Frontend: add `NEXT_PUBLIC_SENTRY_DSN` in Cloudflare Pages env vars → redeploy
+   (it's compile-time; the build also folds the Sentry origin into the CSP in
+   `out/_headers`).
+
+Both are no-ops when the DSN is unset, so this is entirely optional.
+
 ## Ongoing
 
-- **Deploys:** push to `master` → Render and Pages both auto-deploy. CI (`ci.yml`) must be green.
+- **Deploys:** push to `master` → Render and Pages both auto-deploy. CI (`ci.yml`) must be green — it now also runs `pip-audit` and `npm audit`, and Dependabot opens weekly dependency PRs.
 - **Cold starts:** the keep-warm workflow covers business hours (UTC 06:00–20:00, Mon–Fri). Outside that, the first request waits ~1 min. To remove entirely: Render → upgrade the service to a paid instance (~$7/mo), then disable `keep-warm`.
 - **Costs:** all $0. Watch: Neon 0.5 GB storage, Resend 100 emails/day, GitHub Actions ~1,300 min/month (of 2,000 free for private repos). R2 10 GB and Pages bandwidth are effectively unlimited at this scale.
 - **Logs:** Render dashboard (backend), Cloudflare Pages deployment log (frontend build), GitHub Actions (schedulers + CI).

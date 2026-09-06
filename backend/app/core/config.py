@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # Comma-separated browser origins allowed by CORS. In production set this to
     # the deployed frontend URL(s), e.g. "https://po-tracker.pages.dev".
     cors_origins: str = "http://localhost:3000"
+    # Sentry error tracking — no-op when unset.
+    sentry_dsn: str | None = None
 
     # --- Database ---
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/po_tracking"
@@ -29,6 +31,10 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-.env"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    # Per-IP cap on POST /auth/login (slowapi syntax). Blank disables the limiter.
+    login_rate_limit: str = "10/minute"
+    # Minimum length for new passwords (also enforced by scripts.seed_admin).
+    password_min_length: int = 10
 
     # --- File storage (attachments, M3) ---
     storage_backend: str = "local"  # local | s3

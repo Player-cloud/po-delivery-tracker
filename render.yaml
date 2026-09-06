@@ -32,6 +32,8 @@ services:
         sync: false             # e.g. https://po-tracker.pages.dev
       - key: FRONTEND_BASE_URL
         sync: false             # same URL — used for links in reminder emails
+      - key: SENTRY_DSN
+        sync: false             # optional — error tracking; leave blank to skip
 
       # --- email (Resend) ---
       - key: EMAIL_BACKEND

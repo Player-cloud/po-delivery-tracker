@@ -9,12 +9,39 @@ settings = get_settings()
 
 _MAX_PASSWORD_BYTES = 72
 
+_COMMON = {
+    "password",
+    "password1",
+    "12345678",
+    "123456789",
+    "1234567890",
+    "qwertyuiop",
+    "changeme",
+    "letmein",
+    "administrator",
+}
+
+
+class WeakPasswordError(ValueError):
+    """Password does not meet the policy — schema turns this into a 422."""
+
+
+def validate_password_strength(password: str) -> None:
+    if len(password) < settings.password_min_length:
+        raise WeakPasswordError(
+            f"Password must be at least {settings.password_min_length} characters"
+        )
+    if len(password.encode("utf-8")) > _MAX_PASSWORD_BYTES:
+        raise WeakPasswordError(f"Password must be at most {_MAX_PASSWORD_BYTES} bytes")
+    if len(set(password)) < 4:
+        raise WeakPasswordError("Password is too repetitive")
+    if password.lower() in _COMMON:
+        raise WeakPasswordError("Password is too common")
+
 
 def hash_password(password: str) -> str:
-    encoded = password.encode("utf-8")
-    if len(encoded) > _MAX_PASSWORD_BYTES:
-        raise ValueError(f"Password must be at most {_MAX_PASSWORD_BYTES} bytes")
-    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode("utf-8")
+    validate_password_strength(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

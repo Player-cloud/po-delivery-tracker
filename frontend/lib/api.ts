@@ -19,9 +19,11 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (response.status === 401 && token) {
-    // Session expired mid-use — bounce to login. (A 401 on the login call
-    // itself has no token and is handled by the caller.)
+    // Session expired mid-use — hard-navigate to login so all client state is
+    // dropped. (A 401 on the login call itself has no token; the caller handles
+    // that.) Deliberate full reload, not a router push.
     clearToken();
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";
     throw new Error("Not authenticated");
   }

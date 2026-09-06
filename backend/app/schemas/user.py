@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
+from app.core.security import validate_password_strength
 from app.models.user import UserRole
 
 
@@ -13,11 +14,24 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+    @field_validator("password")
+    @classmethod
+    def _strong(cls, v: str) -> str:
+        validate_password_strength(v)
+        return v
+
 
 class UserUpdate(BaseModel):
     role: UserRole | None = None
     active: bool | None = None
     password: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def _strong(cls, v: str | None) -> str | None:
+        if v is not None:
+            validate_password_strength(v)
+        return v
 
 
 class UserOut(UserBase):

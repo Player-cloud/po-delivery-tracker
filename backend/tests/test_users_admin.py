@@ -30,7 +30,7 @@ def client(db, admin):
 def test_create_list_and_update_user(client, db):
     r = client.post(
         "/api/v1/users",
-        json={"email": "new@corp.example", "password": "secret123", "role": "staff"},
+        json={"email": "new@corp.example", "password": "Sup3rSecret!", "role": "staff"},
     )
     assert r.status_code == 201
     uid = r.json()["id"]
@@ -44,7 +44,7 @@ def test_create_list_and_update_user(client, db):
 
 
 def test_duplicate_email_rejected(client):
-    body = {"email": "dup@corp.example", "password": "secret123", "role": "viewer"}
+    body = {"email": "dup@corp.example", "password": "Sup3rSecret!", "role": "viewer"}
     assert client.post("/api/v1/users", json=body).status_code == 201
     assert client.post("/api/v1/users", json=body).status_code == 409
 

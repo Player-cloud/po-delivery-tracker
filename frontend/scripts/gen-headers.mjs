@@ -1,6 +1,14 @@
 // Writes out/_headers for Cloudflare Pages after `next build`. CSP's connect-src
 // is built from the API + Sentry origins so it's as tight as the deploy allows.
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
+
+// `next build` auto-loads .env.production / .env.local; this standalone script
+// does not, so load them here too. loadEnvFile never overwrites an already-set
+// var, so precedence is load-order: shell env, then .env.local, then
+// .env.production — matching Next's own precedence.
+for (const f of [".env.local", ".env.production"]) {
+  if (existsSync(f)) process.loadEnvFile(f);
+}
 
 const api = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/+$/, "");
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;

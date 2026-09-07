@@ -1,22 +1,22 @@
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.6
-sqlalchemy>=2.0.35
-alembic>=1.13.2
+fastapi>=0.141.1
+uvicorn[standard]>=0.52.4
+sqlalchemy>=2.0.52
+alembic>=1.19.1
 psycopg2-binary>=2.9.12
-pydantic>=2.9.2
-pydantic-settings>=2.5.2
-python-jose[cryptography]>=3.3.0
-cryptography>=50.0.0   # pin above python-jose's floor to clear PYSEC-2026-3552
-bcrypt>=4.0.0
-python-multipart>=0.0.9
-python-dotenv>=1.0.1
-email-validator>=2.2.0
-httpx>=0.27.2          # Resend / Brevo email API calls (app.services.notifications)
-boto3>=1.34.0          # S3-compatible attachment storage (Cloudflare R2); only used when STORAGE_BACKEND=s3
-slowapi>=0.1.9         # per-IP rate limiting on the login endpoint
-sentry-sdk[fastapi]>=2.0.0  # error tracking; no-op unless SENTRY_DSN is set
+pydantic>=2.13.5
+pydantic-settings>=2.15.0
+python-jose[cryptography]>=3.5.0
+cryptography>=50.0.1   # pin above python-jose's floor to clear PYSEC-2026-3552
+bcrypt>=5.0.0
+python-multipart>=0.0.32
+python-dotenv>=1.2.3
+email-validator>=2.3.0
+httpx>=0.28.1          # Resend / Brevo email API calls (app.services.notifications)
+boto3>=1.43.88          # S3-compatible attachment storage (Cloudflare R2); only used when STORAGE_BACKEND=s3
+slowapi>=0.1.10         # per-IP rate limiting on the login endpoint
+sentry-sdk[fastapi]>=2.68.1  # error tracking; no-op unless SENTRY_DSN is set
 
 # dev/test only
-pytest>=8.3.3
-ruff>=0.16.0
-pip-audit>=2.7.0
+pytest>=9.1.1
+ruff>=0.16.6
+pip-audit>=2.10.1

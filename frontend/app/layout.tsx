@@ -4,6 +4,7 @@ import "./globals.css";
 import NavBar from "@/components/NavBar";
 import TodayStrip from "@/components/TodayStrip";
 import SentryInit from "@/components/SentryInit";
+import AuthGate from "@/components/AuthGate";
 
 const body = Public_Sans({
   variable: "--font-body",
@@ -45,7 +46,7 @@ export default function RootLayout({
         <NavBar />
         <TodayStrip />
         <main id="main" className="flex-1">
-          {children}
+          <AuthGate>{children}</AuthGate>
         </main>
       </body>
     </html>

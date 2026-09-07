@@ -344,7 +344,8 @@ The frontend is a **static export** (`next.config.ts` `output: "export"`) — th
 - **M4 — Admin screens — DONE (31 Aug 2026).** `/admin/thresholds` (edit the reminder day-thresholds) and `/admin/users` (create users, change role, activate/deactivate, reset password), both admin-only via a shared `<RequireAdmin>` guard. Backend adds a self-lockout guard on `PUT /users/{id}`. Closes FR-14 and FR-22. Shipped alongside a **frontend cleanup pass**: `useAuth()` via `useSyncExternalStore` (NavBar/guards now react to login-out instantly, incl. cross-tab), every data-fetch effect moved to the cancel-flag pattern (whole frontend passes `eslint` clean), create-next-app cruft removed (real `<title>`, `/` redirects to `/po-lines`), `NEXT_PUBLIC_API_BASE_URL` support in `lib/api.ts`.
 - **M5 — Hardening — DONE (31 Aug 2026).** `.github/workflows/ci.yml` (push + PR): backend `ruff check` / `ruff format --check` / `pytest` (83 tests), a migrations job that runs `alembic upgrade head` then `downgrade base` on a real Postgres, and a frontend job (`typecheck` / `lint` / `vitest` / `next build`). `ruff` config + `pytest` config in `backend/pyproject.toml`; whole backend `ruff format`-clean. Frontend gains `vitest` with unit tests for `lib/urgency.ts` and `lib/auth.ts`. Closes NFR-5. (Component-level frontend tests — jsdom + testing-library — deferred; noted in `vitest.config.mts`.)
 - **M6 — Production deployment — DONE (6 Sep 2026).** Live: frontend on Cloudflare Pages (`po-tracker-89k.pages.dev`), backend on Render (`po-tracker-api-q3b3.onrender.com`), Neon (us-east-2) + Cloudflare R2 + Resend (from `onboarding@resend.dev` until a domain is added). `render.yaml` blueprint, static-export frontend (query-param detail routes), `start.sh` migrate-on-start, Neon pool tuning, S3 path-style addressing for R2, GitHub Actions daily reminders + business-hours keep-warm. Verified end-to-end in production: login, PO lines, dashboard, attachment upload/download (R2), and a reminder email delivered. Runbook: **`docs/DEPLOYMENT.md`**.
-- **M7 — Hardening & polish — DONE (6 Sep 2026).** Security hardening (§12: login rate-limiting, password policy, security headers, Sentry, `pip-audit`/`npm audit` in CI, Dependabot); privacy-notice template + pre-launch checklist in `docs/`. **Visual redesign** shipped across all screens: a warm off-white workspace, teal accent, Space Grotesk / Public Sans / IBM Plex Mono, white cards on a shared token set (`app/globals.css` + `lib/ui.ts`), a persistent dark **"Today" strip** (overdue / due-today / this-week counts + `/`-to-search, on every screen), status colours unified across badges/strip/urgency bar, functional motion (`rise` / `grow-x` keyframes, count-up KPIs) fully disabled under `prefers-reduced-motion`, visible `:focus-visible` rings, a skip-link, `aria-current` nav, and responsive layouts (side-scrolling tables, icon-only nav on mobile). **First-run tutorial**: a self-updating "Getting started" checklist on the dashboard (`GettingStarted.tsx`), a 5-step keyboard-navigable guided tour (`TourOverlay.tsx`), and a written **`docs/USER_GUIDE.md`** for the team. Resolves §14 Q4 (branding: none required — a neutral warm palette was chosen) and Q7 (mobile-responsive: yes, v1 is responsive). Deferred to `docs/PRE_LAUNCH_CHECKLIST.md`: E2E/load/accessibility-audit tests, sub-processor DPAs, refresh tokens, SSO, Power BI.
+- **M7 — Hardening & polish — DONE (6 Sep 2026).** Security hardening (§12: login rate-limiting, password policy, security headers, Sentry, `pip-audit`/`npm audit` in CI, Dependabot); privacy-notice template + pre-launch checklist in `docs/`. **Visual redesign** shipped across all screens: a warm off-white workspace, teal accent, Space Grotesk / Public Sans / IBM Plex Mono, white cards on a shared token set (`app/globals.css` + `lib/ui.ts`), a persistent dark **"Today" strip** (overdue / due-today / this-week counts + `/`-to-search, on every screen), status colours unified across badges/strip/urgency bar, functional motion (`rise` / `grow-x` keyframes, count-up KPIs) fully disabled under `prefers-reduced-motion`, visible `:focus-visible` rings, a skip-link, `aria-current` nav, and responsive layouts (side-scrolling tables, icon-only nav on mobile). **First-run tutorial**: a self-updating "Getting started" checklist on the dashboard (`GettingStarted.tsx`), a 5-step keyboard-navigable guided tour (`TourOverlay.tsx`), and a written **`docs/USER_GUIDE.md`** for the team. Also shipped after M7 (7 Sep 2026): a client-side `AuthGate` (logged-out visitors go to `/login` instead of a raw error), `/` lands on `/dashboard`, `.env.production` pins the API origin so any build (incl. `wrangler pages deploy`) targets Render, and a collapsible hamburger nav + card layouts so phones/tablets don't scroll sideways. Resolves §14 Q4 (branding: none required — a neutral warm palette was chosen) and Q7 (mobile-responsive: yes, v1 is responsive). Deferred to `docs/PRE_LAUNCH_CHECKLIST.md`: E2E/load/accessibility-audit tests, sub-processor DPAs, refresh tokens, SSO, Power BI.
+- **M8 — Purchase orders, quantities, partial delivery, reports — PLANNED (7 Sep 2026).** Stakeholder change request. Full spec in **§18**. In brief: promote "PO" from a text label to a real **Purchase Order** record that owns its lines (a PO is "Question 1"; its lines are "1a, 1b, 1c" — one batch order, lines that can go to different people); add **quantity** and a three-state **delivery status** (Not delivered / Partial / Complete) to each line; auto-mark a PO **Delivered** when all its lines are Complete, with a manual **Closed** step for managers/admins; collect a **full name** for each user and use it in reminder emails; rework the dashboard into clickable cards (Total POs · lines, PO Delivered, Closed POs, "Due in 1–30 days" replacing "Due today"); add a **Reports** screen anyone can run (overdue, deliveries in a date range, on-time %, by assignee / status; on-screen + CSV/Excel/PDF). Four phases — data model → backend → dashboard/forms → reports.
 
 ---
 
@@ -433,4 +434,101 @@ Pages, GitHub secrets, first admin, smoke test — is **`docs/DEPLOYMENT.md`**.
 
 ---
 
-*Sources: original SharePoint proposal (ChatGPT, 20 Jul 2026) · `docs/SRS.md` & `docs/SYSTEM_DESIGN.md` (v0.1 drafts) · build/debugging session (Claude, 20–27 Jul 2026) · direct audit of this repository on 31 Aug 2026.*
+---
+
+## 18. M8 — Purchase orders, quantities, partial delivery, reports
+
+Stakeholder change request, relayed 7 Sep 2026. This section is the working spec;
+it is built in four phases and this doc is updated as each lands.
+
+### 18.1 Concept
+
+A **Purchase Order** is the thing that was ordered ("Question 1"). Its **PO lines**
+are the individual items on it ("1a, 1b, 1c") — one batch order whose lines can be
+assigned to different people. Today "PO" is only a `varchar` repeated on every
+line; M8 makes it a real record with its own status.
+
+Deliberately **out of scope** (confirmed with the stakeholder): a delivery
+destination/location on the line, and a vendor on the PO. "We only need PO and PO
+line." Reports therefore have no "by vendor" cut.
+
+### 18.2 Data model changes
+
+**New table `purchase_orders`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | PK | |
+| `po_number` | `varchar(50)` unique | moves off `po_lines` |
+| `status` | enum `PurchaseOrderStatus` | `OPEN` → `DELIVERED` → `CLOSED`, plus `CANCELLED`. Enum stores NAMES (uppercase) — see the `local-db-alembic-drift` note. |
+| `created_by_id`, `modified_by_id` | FK users | |
+| `created_at`, `modified_at` | tz datetime | |
+
+**`po_lines` changes**
+
+- `+ purchase_order_id` FK → `purchase_orders.id`, `NOT NULL`
+- `- po_number` (now reached via the PO relationship; `POLineOut` still exposes it)
+- `po_line` stays a plain integer (1, 2, 3…), unique **per PO**: `UniqueConstraint(purchase_order_id, po_line)`
+- `+ quantity` `INTEGER NOT NULL` — a plain whole number, required on the form; no received-quantity tracking
+- `delivered: bool` **→** `delivery_status` enum `DeliveryStatus` = `NOT_DELIVERED` / `PARTIAL` / `COMPLETE`
+- the `status` hybrid returns `DELIVERED` only when `delivery_status == COMPLETE`; a `PARTIAL` line keeps its date-based urgency (Overdue / Upcoming …) and carries a separate "Partial" tag in the UI
+
+**`users` change**
+
+- `+ full_name` `varchar(255)` — collected when an admin creates a user. Nullable in the schema; existing rows backfilled to the email's local-part; new creates require it.
+
+### 18.3 PO status rules
+
+- A PO auto-transitions **`OPEN` → `DELIVERED`** the moment its last line becomes `COMPLETE`; it drops back to `OPEN` if any line is reopened.
+- **`CLOSED`** is set manually by a **manager or administrator**, and only from `DELIVERED` (you can't close a PO that still has open lines).
+- **`CANCELLED`** is a manual manager/admin action from any non-closed state (an alternative to the deletion-request flow for a PO created in error).
+
+### 18.4 Dashboard rework
+
+All cards become **clickable** — each drills into the matching filtered list.
+
+| Card | Shows | Click →|
+|---|---|---|
+| Purchase orders | `total_pos` **·** `total_po_lines` (all statuses) in one card | PO list |
+| PO Delivered | POs where every line is Complete (`status = DELIVERED`) | PO list filtered Delivered |
+| Closed POs | `status = CLOSED` | PO list filtered Closed |
+| Due in 1–30 days | open lines with `1 ≤ days_remaining ≤ 30` — **replaces** the "Due today" card and its filter | PO Lines filtered |
+| Overdue | open lines past promised date (unchanged) | PO Lines filtered |
+| High priority | unchanged | PO Lines filtered |
+
+The urgency composition bar stays. **`due_today` is removed** from `DashboardSummary` and replaced by `due_1_30`.
+
+> **Open — needs the stakeholder to spell out:** the request listed both "Total PO lines" and a separate "Total Lines" card. Their exact definitions (and what distinguishes the two numbers) are still unconfirmed. Phase 3 builds the single combined "Purchase orders" card above; a second lines card is added once the definition lands.
+
+### 18.5 Reports (`/reports`)
+
+One screen, available to **every authenticated role including Viewer** (read-only aggregate data, no mutations).
+
+- **Reports:** all overdue lines · deliveries in a date range · on-time delivery % · lines by assignee · lines by delivery status.
+- **Filters:** date range, delivery/PO status, assignee, PO number.
+- **Output:** on-screen table, **CSV**, **Excel** (`openpyxl`), **PDF**. PDF renderer chosen in Phase 4 — `weasyprint` (HTML→PDF, needs system libs — check the Render build), else `fpdf2`/`reportlab`. `xlsx` via `openpyxl`.
+- Backend: `GET /reports/{name}?from=&to=&status=&assignee_id=&po=&format=json|csv|xlsx|pdf`.
+
+### 18.6 Other
+
+- **Reminder emails** address the assignee by first name ("Hi Jane,") and name them in the body ("PO 4501-2, assigned to Jane Smith, is due in 3 days"). `reminders._build_message` + the assignee-resolution path read `full_name`.
+- Assignee is shown as **"Name (email)"** in pickers and tables.
+
+### 18.7 Phases
+
+1. **Data model** — `purchase_orders` table, `po_lines` + `users` changes, Alembic `0005` (with data migration for the ~2 production rows), updated SQLAlchemy models + Pydantic schemas + CRUD, `pytest` green.
+2. **Backend** — Purchase Order CRUD endpoints, PO detail (lines nested), revised PO-line create/update (`quantity`, `delivery_status`, `purchase_order_id`), PO auto-status + manual close/cancel, rewritten `GET /dashboard/summary`, reminder-email names.
+3. **Frontend** — Purchase Orders list + PO detail page (lines + status + Close), reworked clickable dashboard, PO-line form (PO picker, quantity, delivery-status dropdown), user-create form (full name), assignee display.
+4. **Reports** — aggregation endpoints + CSV/Excel/PDF, `/reports` page with filters.
+
+### 18.8 Assumptions locked for the build
+
+- PO record is minimal: number + status + audit columns only.
+- No vendor, no delivery location.
+- PO line numbers are plain integers, unique within their PO.
+- `CANCELLED` PO state included (cheap, avoids abusing deletion-requests for typos).
+- `full_name` backfilled to email local-part for the 2 existing users; an admin edits them post-deploy.
+
+---
+
+*Sources: original SharePoint proposal (ChatGPT, 20 Jul 2026) · `docs/SRS.md` & `docs/SYSTEM_DESIGN.md` (v0.1 drafts) · build/debugging session (Claude, 20–27 Jul 2026) · direct audit of this repository on 31 Aug 2026 · stakeholder change request 7 Sep 2026 (§18).*

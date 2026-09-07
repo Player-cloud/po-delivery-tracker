@@ -9,7 +9,7 @@ type Summary = { overdue: number; due_today: number; due_this_week: number };
 
 function Count({ dot, children }: { dot: string; children: React.ReactNode }) {
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex shrink-0 items-center gap-1.5">
       <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dot}`} aria-hidden />
       {children}
     </span>
@@ -53,22 +53,34 @@ export default function TodayStrip() {
   if (!loggedIn) return null;
 
   return (
-    <div className="flex h-10 shrink-0 items-center gap-4 overflow-x-auto bg-strip px-4 font-mono text-[12.5px] text-strip-ink sm:px-6">
-      <span className="font-display text-[11px] tracking-[0.08em] text-strip-faint">TODAY</span>
-      {s ? (
-        <>
-          <Count dot="bg-overdue">{s.overdue} overdue</Count>
-          <Count dot="bg-today">{s.due_today} due today</Count>
-          <Count dot="bg-ontrack">{s.due_this_week} this week</Count>
-        </>
-      ) : (
-        <span className="text-strip-faint">loading…</span>
-      )}
-      <span className="whitespace-nowrap text-strip-faint">reminders daily 07:00 UTC</span>
-      <span className="ml-auto hidden items-center gap-1.5 whitespace-nowrap text-strip-faint sm:flex">
-        <kbd className="rounded border border-strip-faint/50 px-1.5 py-0.5 text-[11px]">/</kbd>
-        search
-      </span>
+    <div className="shrink-0 bg-strip">
+      <div className="mx-auto flex h-10 max-w-6xl items-center gap-3 overflow-x-auto px-4 font-mono text-[12px] text-strip-ink sm:gap-5 sm:px-6 sm:text-[12.5px]">
+        <span className="shrink-0 font-display text-[11px] tracking-[0.08em] text-strip-faint">
+          TODAY
+        </span>
+        {s ? (
+          <>
+            <Count dot="bg-overdue">
+              {s.overdue}&nbsp;overdue
+            </Count>
+            <Count dot="bg-today">
+              {s.due_today}&nbsp;due&nbsp;today
+            </Count>
+            <Count dot="bg-ontrack">
+              {s.due_this_week}&nbsp;this&nbsp;week
+            </Count>
+          </>
+        ) : (
+          <span className="text-strip-faint">loading…</span>
+        )}
+        <span className="hidden shrink-0 whitespace-nowrap text-strip-faint md:inline">
+          reminders daily 07:00 UTC
+        </span>
+        <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap text-strip-faint lg:flex">
+          <kbd className="rounded border border-strip-faint/50 px-1.5 py-0.5 text-[11px]">/</kbd>
+          search
+        </span>
+      </div>
     </div>
   );
 }

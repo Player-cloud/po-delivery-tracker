@@ -116,43 +116,71 @@ export default function DashboardPage() {
         {attention.length === 0 ? (
           <p className="px-5 py-8 text-sm text-faint">Nothing needs attention right now.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-[12.5px]">
-              <thead>
-                <tr className="text-[10.5px] uppercase tracking-[0.04em] text-faint">
-                  <th className="px-5 py-2.5 font-medium">PO / Line</th>
-                  <th className="px-5 py-2.5 font-medium">Promised</th>
-                  <th className="px-5 py-2.5 font-medium">Remaining</th>
-                  <th className="px-5 py-2.5 font-medium">Assignee</th>
-                  <th className="px-5 py-2.5 font-medium">Status</th>
-                  <th className="px-5 py-2.5" />
-                </tr>
-              </thead>
-              <tbody>
-                {attention.map((l) => (
-                  <tr key={l.id} className="border-t border-line/70 hover:bg-surface-tint">
-                    <td className="px-5 py-3 font-semibold">
+          <>
+            {/* Phones / small tablets: stacked rows */}
+            <ul className="divide-y divide-line/70 md:hidden">
+              {attention.map((l) => (
+                <li key={l.id} className="flex flex-col gap-1.5 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">
                       {l.po_number} <span className="text-faint">&middot; {l.po_line}</span>
-                    </td>
-                    <td className="px-5 py-3 font-mono text-muted">{l.promised_delivery}</td>
-                    <td className="px-5 py-3 text-muted">{daysRemainingLabel(l.days_remaining)}</td>
-                    <td className="px-5 py-3 text-muted">{l.assigned_to?.email ?? "—"}</td>
-                    <td className="px-5 py-3">
-                      <StatusBadge delivered={l.delivered} days_remaining={l.days_remaining} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`/po-lines/edit?id=${l.id}`}
-                        className="text-accent hover:underline"
-                      >
-                        Edit
-                      </Link>
-                    </td>
+                    </span>
+                    <StatusBadge delivered={l.delivered} days_remaining={l.days_remaining} />
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-muted">
+                    <span className="font-mono">{l.promised_delivery}</span>
+                    <span>· {daysRemainingLabel(l.days_remaining)}</span>
+                    <span className="w-full truncate">{l.assigned_to?.email ?? "—"}</span>
+                  </div>
+                  <Link
+                    href={`/po-lines/edit?id=${l.id}`}
+                    className="text-[12px] text-accent hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            {/* Tablet landscape and up: table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[560px] text-left text-[12.5px]">
+                <thead>
+                  <tr className="text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                    <th className="px-5 py-2.5 font-medium">PO / Line</th>
+                    <th className="px-5 py-2.5 font-medium">Promised</th>
+                    <th className="px-5 py-2.5 font-medium">Remaining</th>
+                    <th className="px-5 py-2.5 font-medium">Assignee</th>
+                    <th className="px-5 py-2.5 font-medium">Status</th>
+                    <th className="px-5 py-2.5" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {attention.map((l) => (
+                    <tr key={l.id} className="border-t border-line/70 hover:bg-surface-tint">
+                      <td className="px-5 py-3 font-semibold">
+                        {l.po_number} <span className="text-faint">&middot; {l.po_line}</span>
+                      </td>
+                      <td className="px-5 py-3 font-mono text-muted">{l.promised_delivery}</td>
+                      <td className="px-5 py-3 text-muted">{daysRemainingLabel(l.days_remaining)}</td>
+                      <td className="px-5 py-3 text-muted">{l.assigned_to?.email ?? "—"}</td>
+                      <td className="px-5 py-3">
+                        <StatusBadge delivered={l.delivered} days_remaining={l.days_remaining} />
+                      </td>
+                      <td className="px-5 py-3">
+                        <Link
+                          href={`/po-lines/edit?id=${l.id}`}
+                          className="text-accent hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

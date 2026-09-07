@@ -137,58 +137,100 @@ function POLines() {
 
       {error && <p className="text-overdue-on">{error}</p>}
 
-      <div className={`${card} overflow-hidden`}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-[12.5px]">
-            <thead>
-              <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
-                <th className="px-5 py-3 font-medium">PO Number</th>
-                <th className="px-5 py-3 font-medium">Line</th>
-                <th className="px-5 py-3 font-medium">Promised</th>
-                <th className="px-5 py-3 font-medium">Remaining</th>
-                <th className="px-5 py-3 font-medium">Assignee</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line) => (
-                <tr key={line.id} className="border-t border-line/70 hover:bg-surface-tint">
-                  <td className="px-5 py-3 font-semibold">{line.po_number}</td>
-                  <td className="px-5 py-3 font-mono">{line.po_line}</td>
-                  <td className="px-5 py-3 font-mono text-muted">{line.promised_delivery}</td>
-                  <td className="px-5 py-3 text-muted">
-                    {line.delivered ? "—" : daysRemainingLabel(line.days_remaining)}
-                  </td>
-                  <td className="px-5 py-3 text-muted">{line.assigned_to?.email ?? "—"}</td>
-                  <td className="px-5 py-3">
-                    <StatusBadge delivered={line.delivered} days_remaining={line.days_remaining} />
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3">
-                    <Link href={`/po-lines/edit?id=${line.id}`} className="text-accent hover:underline">
-                      Edit
-                    </Link>
-                    <span className="text-line"> · </span>
-                    <Link
-                      href={`/po-lines/request-deletion?id=${line.id}`}
-                      className="text-overdue-on hover:underline"
-                    >
-                      Request deletion
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {!loading && lines.length === 0 && !error && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-faint">
-                    {filtered ? "No PO lines match." : "No PO lines yet."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {!loading && lines.length === 0 && !error ? (
+        <div className={`${card} px-5 py-10 text-center text-sm text-faint`}>
+          {filtered ? "No PO lines match." : "No PO lines yet."}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Phones / small tablets: stacked cards */}
+          <ul className="flex flex-col gap-2.5 md:hidden">
+            {lines.map((line) => (
+              <li key={line.id} className={`${card} flex flex-col gap-2 p-4`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="font-semibold">{line.po_number}</span>
+                    <span className="ml-1.5 font-mono text-faint">· {line.po_line}</span>
+                  </div>
+                  <StatusBadge delivered={line.delivered} days_remaining={line.days_remaining} />
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px] text-muted">
+                  <div>
+                    <dt className="text-faint">Promised</dt>
+                    <dd className="font-mono">{line.promised_delivery}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-faint">Remaining</dt>
+                    <dd>{line.delivered ? "—" : daysRemainingLabel(line.days_remaining)}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-faint">Assignee</dt>
+                    <dd className="truncate">{line.assigned_to?.email ?? "—"}</dd>
+                  </div>
+                </dl>
+                <div className="flex gap-4 pt-1 text-[12.5px]">
+                  <Link href={`/po-lines/edit?id=${line.id}`} className="text-accent hover:underline">
+                    Edit
+                  </Link>
+                  <Link
+                    href={`/po-lines/request-deletion?id=${line.id}`}
+                    className="text-overdue-on hover:underline"
+                  >
+                    Request deletion
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Tablet landscape and up: table */}
+          <div className={`${card} hidden overflow-hidden md:block`}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                    <th className="px-5 py-3 font-medium">PO Number</th>
+                    <th className="px-5 py-3 font-medium">Line</th>
+                    <th className="px-5 py-3 font-medium">Promised</th>
+                    <th className="px-5 py-3 font-medium">Remaining</th>
+                    <th className="px-5 py-3 font-medium">Assignee</th>
+                    <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line) => (
+                    <tr key={line.id} className="border-t border-line/70 hover:bg-surface-tint">
+                      <td className="px-5 py-3 font-semibold">{line.po_number}</td>
+                      <td className="px-5 py-3 font-mono">{line.po_line}</td>
+                      <td className="px-5 py-3 font-mono text-muted">{line.promised_delivery}</td>
+                      <td className="px-5 py-3 text-muted">
+                        {line.delivered ? "—" : daysRemainingLabel(line.days_remaining)}
+                      </td>
+                      <td className="px-5 py-3 text-muted">{line.assigned_to?.email ?? "—"}</td>
+                      <td className="px-5 py-3">
+                        <StatusBadge delivered={line.delivered} days_remaining={line.days_remaining} />
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3">
+                        <Link href={`/po-lines/edit?id=${line.id}`} className="text-accent hover:underline">
+                          Edit
+                        </Link>
+                        <span className="text-line"> · </span>
+                        <Link
+                          href={`/po-lines/request-deletion?id=${line.id}`}
+                          className="text-overdue-on hover:underline"
+                        >
+                          Request deletion
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

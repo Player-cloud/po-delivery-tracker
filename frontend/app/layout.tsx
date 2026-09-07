@@ -35,7 +35,7 @@ export default function RootLayout({
       lang="en"
       className={`${body.variable} ${heading.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-page text-ink">
+      <body className="min-h-full flex flex-col overflow-x-hidden bg-page text-ink">
         <SentryInit />
         <a
           href="#main"

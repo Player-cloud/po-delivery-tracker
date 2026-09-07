@@ -45,6 +45,7 @@ class TestSummary:
     def test_summary_endpoint_shape(self, client):
         body = client.get("/api/v1/dashboard/summary").json()
         assert set(body) == {
+            # pre-M8
             "total_open",
             "due_today",
             "due_this_week",
@@ -53,6 +54,12 @@ class TestSummary:
             "overdue",
             "completed",
             "high_priority",
+            # M8
+            "total_pos",
+            "total_po_lines",
+            "pos_delivered",
+            "pos_closed",
+            "due_1_30",
         }
 
 

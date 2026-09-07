@@ -13,6 +13,9 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    # Collected on the create form (M8). Optional at the API for back-compat
+    # with pre-M8 clients; the frontend form requires it.
+    full_name: str | None = None
 
     @field_validator("password")
     @classmethod
@@ -22,6 +25,7 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
+    full_name: str | None = None
     role: UserRole | None = None
     active: bool | None = None
     password: str | None = None
@@ -38,6 +42,7 @@ class UserOut(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    full_name: str | None = None
     active: bool
     created_at: datetime
 
@@ -53,3 +58,5 @@ class AssignableUser(BaseModel):
 
     id: int
     email: str
+    full_name: str | None = None
+    display_name: str  # full name if set, else email (model property)

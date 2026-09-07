@@ -2,7 +2,6 @@ import enum
 from datetime import date, datetime
 
 from sqlalchemy import (
-    Boolean,
     Computed,
     Date,
     DateTime,
@@ -10,7 +9,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    String,
     Text,
     UniqueConstraint,
     case,
@@ -28,6 +26,16 @@ class Priority(str, enum.Enum):
     LOW = "low"
 
 
+class DeliveryStatus(str, enum.Enum):
+    """Per-line delivery state (M8). Replaces the old `delivered` boolean:
+    a line can be partially delivered while its remaining quantity is still
+    tracked against the promised date."""
+
+    NOT_DELIVERED = "not_delivered"
+    PARTIAL = "partial"
+    COMPLETE = "complete"
+
+
 class Status(str, enum.Enum):
     UPCOMING = "Upcoming"
     DUE_TODAY = "Due Today"
@@ -37,8 +45,8 @@ class Status(str, enum.Enum):
 
 class POLine(Base):
     """
-    One row per PO line — mirrors the SharePoint list schema from the original
-    design document, with (po_number, po_line) enforced as a unique key (FR-1, FR-2).
+    One item on a purchase order — the "1a / 1b / 1c" under a PO (M8). Belongs to
+    exactly one `PurchaseOrder`; `po_line` is a plain integer unique within that PO.
 
     days_remaining and status are intentionally NOT stored columns (FR-5): they're
     computed from `promised_delivery` relative to the current date, either in Python
@@ -49,19 +57,28 @@ class POLine(Base):
 
     __tablename__ = "po_lines"
     __table_args__ = (
-        UniqueConstraint("po_number", "po_line", name="uq_po_number_po_line"),
+        UniqueConstraint("purchase_order_id", "po_line", name="uq_po_line_per_po"),
         # Speeds up the dashboard's main query: open lines ordered by due date
-        Index("ix_po_lines_open_by_due_date", "delivered", "promised_delivery"),
+        Index("ix_po_lines_open_by_due_date", "delivery_status", "promised_delivery"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    po_number: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
+    purchase_order_id: Mapped[int] = mapped_column(
+        ForeignKey("purchase_orders.id"), nullable=False, index=True
+    )
     po_line: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     issue_date: Mapped[date] = mapped_column(Date, nullable=False)
     promised_delivery: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    delivered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    delivery_status: Mapped[DeliveryStatus] = mapped_column(
+        Enum(DeliveryStatus, name="delivery_status", native_enum=False),
+        nullable=False,
+        default=DeliveryStatus.NOT_DELIVERED,
+        index=True,
+    )
 
     # Required (PRD §14 Q2): every PO line has an owner who receives its reminders.
     assigned_to_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -85,6 +102,7 @@ class POLine(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    purchase_order = relationship("PurchaseOrder", back_populates="lines")
     assigned_to = relationship(
         "User", foreign_keys=[assigned_to_id], back_populates="assigned_po_lines"
     )
@@ -95,6 +113,18 @@ class POLine(Base):
     notifications = relationship(
         "NotificationHistory", back_populates="po_line", cascade="all, delete-orphan"
     )
+
+    # ---- convenience ----
+
+    @property
+    def po_number(self) -> str | None:
+        """The parent PO's number. Read-only — set it on the PurchaseOrder."""
+        return self.purchase_order.po_number if self.purchase_order is not None else None
+
+    @property
+    def delivered(self) -> bool:
+        """Back-compat shim for callers that predate `delivery_status` (M8)."""
+        return self.delivery_status == DeliveryStatus.COMPLETE
 
     # ---- computed, never stored ----
 
@@ -113,7 +143,7 @@ class POLine(Base):
 
     @hybrid_property
     def status(self) -> Status:
-        if self.delivered:
+        if self.delivery_status == DeliveryStatus.COMPLETE:
             return Status.DELIVERED
         remaining = self.days_remaining
         if remaining < 0:
@@ -126,7 +156,7 @@ class POLine(Base):
     def status(cls):
         remaining = cls.days_remaining
         return case(
-            (cls.delivered.is_(True), Status.DELIVERED.value),
+            (cls.delivery_status == DeliveryStatus.COMPLETE, Status.DELIVERED.value),
             (remaining < 0, Status.OVERDUE.value),
             (remaining == 0, Status.DUE_TODAY.value),
             else_=Status.UPCOMING.value,

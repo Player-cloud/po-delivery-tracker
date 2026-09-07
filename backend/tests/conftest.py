@@ -14,7 +14,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.models.po_line import POLine, Priority
+from app.models.po_line import DeliveryStatus, POLine, Priority
+from app.models.purchase_order import PurchaseOrder
 from app.models.user import User, UserRole
 
 
@@ -40,8 +41,20 @@ def db():
 
 @pytest.fixture
 def users(db):
-    alice = User(email="alice@corp.test", password_hash="x", role=UserRole.STAFF, active=True)
-    bob = User(email="bob@corp.test", password_hash="x", role=UserRole.STAFF, active=False)
+    alice = User(
+        email="alice@corp.test",
+        full_name="Alice Adams",
+        password_hash="x",
+        role=UserRole.STAFF,
+        active=True,
+    )
+    bob = User(
+        email="bob@corp.test",
+        full_name="Bob Barnes",
+        password_hash="x",
+        role=UserRole.STAFF,
+        active=False,
+    )
     db.add_all([alice, bob])
     db.commit()
     return {"alice": alice, "bob": bob}
@@ -54,20 +67,43 @@ _DEFAULT = object()
 def make_line(db, users):
     counter = {"n": 0}
 
-    def _make(*, due_in_days: int, delivered: bool = False, assigned_to=_DEFAULT, po_number=None):
+    def _make(
+        *,
+        due_in_days: int,
+        delivered: bool = False,
+        delivery_status: DeliveryStatus | None = None,
+        assigned_to=_DEFAULT,
+        po_number=None,
+        po_line: int | None = None,
+        quantity: int = 1,
+    ):
         # Assigned To is required (PRD §14 Q2) — default to an active user.
         assignee = users["alice"] if assigned_to is _DEFAULT else assigned_to
         counter["n"] += 1
+        number = po_number or f"PO{counter['n']:03d}"
+
+        po = db.query(PurchaseOrder).filter_by(po_number=number).one_or_none()
+        if po is None:
+            po = PurchaseOrder(po_number=number)
+            db.add(po)
+            db.flush()
+
+        if delivery_status is None:
+            delivery_status = DeliveryStatus.COMPLETE if delivered else DeliveryStatus.NOT_DELIVERED
+
         line = POLine(
-            po_number=po_number or f"PO{counter['n']:03d}",
-            po_line=1,
+            purchase_order=po,
+            po_line=po_line if po_line is not None else counter["n"],
+            quantity=quantity,
             issue_date=date.today() - timedelta(days=30),
             promised_delivery=date.today() + timedelta(days=due_in_days),
-            delivered=delivered,
+            delivery_status=delivery_status,
             priority=Priority.MEDIUM,
             assigned_to_id=assignee.id if assignee is not None else None,
         )
         db.add(line)
+        db.flush()
+        po.recompute_status()
         db.commit()
         return line
 

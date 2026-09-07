@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import get_settings
 from app.crud import notification_history as history_crud
 from app.crud.configuration import get_thresholds
-from app.models.po_line import POLine
+from app.models.po_line import DeliveryStatus, POLine
 from app.services.notifications import (
     EmailMessage,
     NotificationError,
@@ -161,8 +161,8 @@ def run_reminders(
 
     stmt = (
         select(POLine)
-        .where(POLine.delivered.is_(False))
-        .options(joinedload(POLine.assigned_to))
+        .where(POLine.delivery_status != DeliveryStatus.COMPLETE)
+        .options(joinedload(POLine.assigned_to), joinedload(POLine.purchase_order))
         .order_by(POLine.promised_delivery.asc())
         .limit(settings.reminder_batch_size)
     )

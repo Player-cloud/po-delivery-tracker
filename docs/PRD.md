@@ -516,7 +516,7 @@ One screen, available to **every authenticated role including Viewer** (read-onl
 
 ### 18.7 Phases
 
-1. **Data model** — `purchase_orders` table, `po_lines` + `users` changes, Alembic `0005` (with data migration for the ~2 production rows), updated SQLAlchemy models + Pydantic schemas + CRUD, `pytest` green.
+1. **Data model — DONE (7 Sep 2026).** `purchase_orders` table (`PurchaseOrder` model + `PurchaseOrderStatus`), `po_lines` gains `purchase_order_id` / `quantity` / `delivery_status` (`DeliveryStatus` enum) and loses `po_number` / `delivered` (both kept as read-only model properties for back-compat), `users` gains `full_name` (+ `display_name` / `first_name` helpers). Alembic `0005` migrates each distinct `po_number` into a PO row, maps `delivered→COMPLETE`, backfills names from the email local-part; reversible. `PurchaseOrder.recompute_status()` auto-syncs OPEN⇄DELIVERED from the lines; CRUD `create_po_line` get-or-creates the PO by number. Schemas stay backward-compatible: `DashboardSummary` / `POLineOut` / `UserCreate` add fields, drop none, so the deployed frontend keeps working. 97 `pytest` (7 new in `test_purchase_orders.py`), `ruff` clean.
 2. **Backend** — Purchase Order CRUD endpoints, PO detail (lines nested), revised PO-line create/update (`quantity`, `delivery_status`, `purchase_order_id`), PO auto-status + manual close/cancel, rewritten `GET /dashboard/summary`, reminder-email names.
 3. **Frontend** — Purchase Orders list + PO detail page (lines + status + Close), reworked clickable dashboard, PO-line form (PO picker, quantity, delivery-status dropdown), user-create form (full name), assignee display.
 4. **Reports** — aggregation endpoints + CSV/Excel/PDF, `/reports` page with filters.

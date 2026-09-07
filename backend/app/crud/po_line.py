@@ -8,13 +8,15 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.po_line import POLine, Status
+from app.crud.purchase_order import get_or_create_by_number
+from app.models.po_line import DeliveryStatus, POLine, Status
+from app.models.purchase_order import PurchaseOrder, PurchaseOrderStatus
 from app.models.user import User, UserRole
 from app.schemas.po_line import POLineCreate, POLineUpdate
 
 
 class DuplicatePOLineError(Exception):
-    """Raised when (po_number, po_line) already exists — the route turns this into a 409."""
+    """Raised when (po_number, line no.) already exists — the route turns this into a 409."""
 
 
 class InvalidAssigneeError(Exception):
@@ -48,50 +50,81 @@ def list_po_lines(
     status_filter: str | None = None,
     search: str | None = None,
 ) -> list[POLine]:
-    stmt = select(POLine)
+    stmt = select(POLine).join(POLine.purchase_order)
     stmt = _visible_to(stmt, current_user)
 
     if status_filter:
         stmt = stmt.where(POLine.status == status_filter)
     if search:
-        stmt = stmt.where(POLine.po_number.ilike(f"%{search}%"))
+        stmt = stmt.where(PurchaseOrder.po_number.ilike(f"%{search}%"))
 
     stmt = stmt.order_by(POLine.promised_delivery.asc())
     return list(db.scalars(stmt))
 
 
+def _delivery_status_from_update(data: POLineUpdate) -> DeliveryStatus | None:
+    """M8 field wins; fall back to the pre-M8 `delivered` boolean."""
+    if data.delivery_status is not None:
+        return data.delivery_status
+    if data.delivered is not None:
+        return DeliveryStatus.COMPLETE if data.delivered else DeliveryStatus.NOT_DELIVERED
+    return None
+
+
 def create_po_line(db: Session, data: POLineCreate, current_user: User) -> POLine:
+    po = get_or_create_by_number(db, data.po_number, current_user)
+
     exists = db.scalar(
-        select(POLine).where(POLine.po_number == data.po_number, POLine.po_line == data.po_line)
+        select(POLine).where(POLine.purchase_order_id == po.id, POLine.po_line == data.po_line)
     )
     if exists:
-        raise DuplicatePOLineError(f"PO {data.po_number} line {data.po_line} already exists")
+        raise DuplicatePOLineError(f"PO {po.po_number} line {data.po_line} already exists")
 
     _validate_assignee(db, data.assigned_to_id)
 
+    fields = data.model_dump(exclude={"po_number"})
     po_line = POLine(
-        **data.model_dump(), created_by_id=current_user.id, modified_by_id=current_user.id
+        **fields,
+        purchase_order_id=po.id,
+        created_by_id=current_user.id,
+        modified_by_id=current_user.id,
     )
     db.add(po_line)
+    db.flush()
+    db.refresh(po)
+    po.recompute_status()
     db.commit()
     db.refresh(po_line)
     return po_line
 
 
 def update_po_line(db: Session, po_line: POLine, data: POLineUpdate, current_user: User) -> POLine:
-    updates = data.model_dump(exclude_unset=True)
+    updates = data.model_dump(exclude_unset=True, exclude={"delivered", "delivery_status"})
     if "assigned_to_id" in updates:
         _validate_assignee(db, updates["assigned_to_id"])
     for field, value in updates.items():
         setattr(po_line, field, value)
+
+    new_delivery = _delivery_status_from_update(data)
+    if new_delivery is not None:
+        po_line.delivery_status = new_delivery
+
     po_line.modified_by_id = current_user.id
+    db.flush()
+    if po_line.purchase_order is not None:
+        po_line.purchase_order.recompute_status()
     db.commit()
     db.refresh(po_line)
     return po_line
 
 
 def delete_po_line(db: Session, po_line: POLine) -> None:
+    po = po_line.purchase_order
     db.delete(po_line)
+    db.flush()
+    if po is not None:
+        db.refresh(po)
+        po.recompute_status()
     db.commit()
 
 
@@ -108,7 +141,12 @@ def dashboard_summary(db: Session, current_user: User) -> dict:
 
     open_lines = [l for l in lines if not l.delivered]
 
+    pos = _visible_purchase_orders(db, current_user)
+    pos_delivered = sum(1 for p in pos if p.status == PurchaseOrderStatus.DELIVERED)
+    pos_closed = sum(1 for p in pos if p.status == PurchaseOrderStatus.CLOSED)
+
     return {
+        # pre-M8
         "total_open": len(open_lines),
         "due_today": sum(1 for l in open_lines if l.status == Status.DUE_TODAY),
         "due_this_week": sum(
@@ -121,7 +159,20 @@ def dashboard_summary(db: Session, current_user: User) -> dict:
         "high_priority": sum(
             1 for l in open_lines if l.priority is not None and l.priority.value == "high"
         ),
+        # M8
+        "total_pos": len(pos),
+        "total_po_lines": len(lines),
+        "pos_delivered": pos_delivered,
+        "pos_closed": pos_closed,
+        "due_1_30": sum(1 for l in open_lines if 1 <= l.days_remaining <= 30),
     }
+
+
+def _visible_purchase_orders(db: Session, current_user: User) -> list[PurchaseOrder]:
+    stmt = select(PurchaseOrder)
+    if current_user.role == UserRole.STAFF:
+        stmt = stmt.where(PurchaseOrder.lines.any(POLine.assigned_to_id == current_user.id))
+    return list(db.scalars(stmt))
 
 
 # Open lines within this many days of their promised date (or already past it)

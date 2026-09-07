@@ -3,7 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, require_roles
 from app.crud import po_line as po_line_crud
-from app.crud.po_line import DuplicatePOLineError, InvalidAssigneeError
+from app.crud.po_line import (
+    ClosedPurchaseOrderError,
+    DuplicatePOLineError,
+    InvalidAssigneeError,
+)
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.po_line import POLineCreate, POLineOut, POLineUpdate
@@ -23,10 +27,23 @@ def _assert_staff_can_touch(po_line, current_user: User) -> None:
 def list_po_lines(
     status_filter: str | None = Query(default=None, alias="status"),
     search: str | None = None,
+    delivery_status: str | None = None,
+    priority: str | None = None,
+    due_within: int | None = Query(default=None, ge=1),
+    purchase_order_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return po_line_crud.list_po_lines(db, current_user, status_filter=status_filter, search=search)
+    return po_line_crud.list_po_lines(
+        db,
+        current_user,
+        status_filter=status_filter,
+        search=search,
+        delivery_status=delivery_status,
+        priority=priority,
+        due_within=due_within,
+        purchase_order_id=purchase_order_id,
+    )
 
 
 @router.get("/{po_line_id}", response_model=POLineOut)
@@ -52,7 +69,7 @@ def create_po_line(
 ):
     try:
         return po_line_crud.create_po_line(db, data, current_user)
-    except DuplicatePOLineError as exc:
+    except (DuplicatePOLineError, ClosedPurchaseOrderError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except InvalidAssigneeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

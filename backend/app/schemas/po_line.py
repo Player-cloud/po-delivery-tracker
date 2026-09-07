@@ -3,8 +3,20 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.models.po_line import DeliveryStatus, Priority, Status
-from app.schemas.purchase_order import PurchaseOrderRef
+from app.models.purchase_order import PurchaseOrderStatus
 from app.schemas.user import AssignableUser
+
+
+class PurchaseOrderRef(BaseModel):
+    """Minimal PO info embedded in a PO line response. Defined here (not in
+    schemas.purchase_order) so schemas.purchase_order can depend on this module
+    for `PurchaseOrderDetail.lines` without a circular import."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    po_number: str
+    status: PurchaseOrderStatus
 
 
 class POLineBase(BaseModel):

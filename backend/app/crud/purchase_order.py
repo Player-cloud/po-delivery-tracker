@@ -1,11 +1,15 @@
 """Data-access layer for purchase orders (M8, PRD §18)."""
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.po_line import POLine
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderStatus
 from app.models.user import User, UserRole
+
+
+class DuplicatePurchaseOrderError(Exception):
+    """Raised when a PO with this number already exists — the route turns this into a 409."""
 
 
 class InvalidStatusTransitionError(Exception):
@@ -40,11 +44,32 @@ def get_or_create_by_number(
     return po
 
 
+def create_purchase_order(db: Session, po_number: str, current_user: User) -> PurchaseOrder:
+    if get_by_number(db, po_number) is not None:
+        raise DuplicatePurchaseOrderError(f"PO {po_number} already exists")
+    po = PurchaseOrder(
+        po_number=po_number,
+        status=PurchaseOrderStatus.OPEN,
+        created_by_id=current_user.id,
+        modified_by_id=current_user.id,
+    )
+    db.add(po)
+    db.commit()
+    db.refresh(po)
+    return po
+
+
 def _visible_to(stmt, current_user: User):
     """Staff see only POs that have a line assigned to them; everyone else sees all."""
     if current_user.role == UserRole.STAFF:
         return stmt.where(PurchaseOrder.lines.any(POLine.assigned_to_id == current_user.id))
     return stmt
+
+
+def is_visible(po: PurchaseOrder, current_user: User) -> bool:
+    if current_user.role != UserRole.STAFF:
+        return True
+    return any(line.assigned_to_id == current_user.id for line in po.lines)
 
 
 def list_purchase_orders(
@@ -58,12 +83,35 @@ def list_purchase_orders(
     return list(db.scalars(stmt))
 
 
-def count_by_status(db: Session, current_user: User) -> dict[PurchaseOrderStatus, int]:
-    stmt = select(PurchaseOrder.status, func.count()).group_by(PurchaseOrder.status)
-    stmt = _visible_to(stmt, current_user)
-    return dict(db.execute(stmt).all())
+# Manual status transitions (PRD §18.3). OPEN/DELIVERED are otherwise managed by
+# PurchaseOrder.recompute_status().
+_ACTIONS: dict[str, tuple[set[PurchaseOrderStatus], PurchaseOrderStatus | None]] = {
+    # action: (allowed-from states, fixed target — or None to recompute from lines)
+    "close": ({PurchaseOrderStatus.DELIVERED}, PurchaseOrderStatus.CLOSED),
+    "cancel": (
+        {PurchaseOrderStatus.OPEN, PurchaseOrderStatus.DELIVERED},
+        PurchaseOrderStatus.CANCELLED,
+    ),
+    "reopen": ({PurchaseOrderStatus.CLOSED, PurchaseOrderStatus.CANCELLED}, None),
+}
 
 
-def total_pos(db: Session, current_user: User) -> int:
-    stmt = _visible_to(select(func.count()).select_from(PurchaseOrder), current_user)
-    return db.scalar(stmt) or 0
+def set_status(db: Session, po: PurchaseOrder, action: str, current_user: User) -> PurchaseOrder:
+    if action not in _ACTIONS:
+        raise InvalidStatusTransitionError(f"Unknown action {action!r}")
+    allowed_from, target = _ACTIONS[action]
+    if po.status not in allowed_from:
+        raise InvalidStatusTransitionError(
+            f"Cannot {action} a PO that is {po.status.value} "
+            f"(allowed from: {', '.join(s.value for s in allowed_from)})"
+        )
+    if target is not None:
+        po.status = target
+    else:
+        # reopen: force back into the auto-managed band, then let the lines decide
+        po.status = PurchaseOrderStatus.OPEN
+        po.recompute_status()
+    po.modified_by_id = current_user.id
+    db.commit()
+    db.refresh(po)
+    return po

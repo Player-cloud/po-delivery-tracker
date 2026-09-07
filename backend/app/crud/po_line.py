@@ -23,6 +23,10 @@ class InvalidAssigneeError(Exception):
     """Raised when assigned_to_id doesn't point to an existing, active user — route turns this into a 400."""
 
 
+class ClosedPurchaseOrderError(Exception):
+    """Raised when adding a line to a CLOSED / CANCELLED PO — route turns this into a 409."""
+
+
 def _validate_assignee(db: Session, assigned_to_id: int) -> None:
     user = db.get(User, assigned_to_id)
     if user is None or not user.active:
@@ -49,6 +53,11 @@ def list_po_lines(
     current_user: User,
     status_filter: str | None = None,
     search: str | None = None,
+    *,
+    delivery_status: str | None = None,
+    priority: str | None = None,
+    due_within: int | None = None,
+    purchase_order_id: int | None = None,
 ) -> list[POLine]:
     stmt = select(POLine).join(POLine.purchase_order)
     stmt = _visible_to(stmt, current_user)
@@ -57,9 +66,28 @@ def list_po_lines(
         stmt = stmt.where(POLine.status == status_filter)
     if search:
         stmt = stmt.where(PurchaseOrder.po_number.ilike(f"%{search}%"))
+    if delivery_status:
+        stmt = stmt.where(POLine.delivery_status == delivery_status)
+    if priority:
+        stmt = stmt.where(POLine.priority == priority)
+    if purchase_order_id is not None:
+        stmt = stmt.where(POLine.purchase_order_id == purchase_order_id)
 
     stmt = stmt.order_by(POLine.promised_delivery.asc())
-    return list(db.scalars(stmt))
+    rows = list(db.scalars(stmt))
+
+    if due_within is not None:
+        # "Due in 1-30 days" dashboard drill-through — filtered on the computed
+        # days_remaining in Python (same approach as dashboard_summary; the SQL
+        # expression is Postgres-only). Open lines only.
+        rows = [
+            line
+            for line in rows
+            if line.delivery_status != DeliveryStatus.COMPLETE
+            and 1 <= line.days_remaining <= due_within
+        ]
+
+    return rows
 
 
 def _delivery_status_from_update(data: POLineUpdate) -> DeliveryStatus | None:
@@ -73,6 +101,11 @@ def _delivery_status_from_update(data: POLineUpdate) -> DeliveryStatus | None:
 
 def create_po_line(db: Session, data: POLineCreate, current_user: User) -> POLine:
     po = get_or_create_by_number(db, data.po_number, current_user)
+
+    if po.status in (PurchaseOrderStatus.CLOSED, PurchaseOrderStatus.CANCELLED):
+        raise ClosedPurchaseOrderError(
+            f"PO {po.po_number} is {po.status.value} — reopen it before adding lines"
+        )
 
     exists = db.scalar(
         select(POLine).where(POLine.purchase_order_id == po.id, POLine.po_line == data.po_line)

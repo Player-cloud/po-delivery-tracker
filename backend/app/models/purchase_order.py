@@ -57,6 +57,10 @@ class PurchaseOrder(Base):
     def line_count(self) -> int:
         return len(self.lines)
 
+    @property
+    def lines_complete(self) -> int:
+        return sum(1 for line in self.lines if line.delivery_status == DeliveryStatus.COMPLETE)
+
     def recompute_status(self) -> None:
         """Sync OPEN ⇄ DELIVERED from the lines. Never overrides a manual
         CLOSED / CANCELLED — call `reopen()` first if that's intended."""

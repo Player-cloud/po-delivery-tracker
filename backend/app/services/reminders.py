@@ -121,14 +121,26 @@ def _recipient_for(line: POLine, decision: ReminderDecision) -> str | None:
     return settings.reminder_fallback_email
 
 
+def _assignee_label(line: POLine) -> str:
+    """'Full Name <email>' when we have a name, else just the email (M8, PRD §18.6)."""
+    user = line.assigned_to
+    if user is None:
+        return "-"
+    name = getattr(user, "full_name", None)
+    return f"{name} <{user.email}>" if name else user.email
+
+
 def _build_message(line: POLine, decision: ReminderDecision, recipient: str) -> EmailMessage:
     link = f"{settings.frontend_base_url.rstrip('/')}/po-lines/edit?id={line.id}"
     subject = f"PO {line.po_number} - Line {line.po_line} {decision.phrase}"
     if decision.escalate:
         subject = f"[ESCALATED] {subject}"
     status = line.status.value if hasattr(line.status, "value") else str(line.status)
-    assignee_email = line.assigned_to.email if line.assigned_to is not None else "-"
+
+    first_name = getattr(line.assigned_to, "first_name", None) if line.assigned_to else None
+    greeting = f"Hi {first_name},\n\n" if first_name else ""
     text_body = (
+        f"{greeting}"
         f"Purchase order {line.po_number}, line {line.po_line} {decision.phrase}.\n\n"
         f"  PO Number:          {line.po_number}\n"
         f"  PO Line:            {line.po_line}\n"
@@ -137,7 +149,7 @@ def _build_message(line: POLine, decision: ReminderDecision, recipient: str) -> 
         f"  Lead Time (days):   {line.lead_time_days if line.lead_time_days is not None else '-'}\n"
         f"  Days Remaining:     {decision.days_remaining}\n"
         f"  Status:             {status}\n"
-        f"  Assigned To:        {assignee_email}\n"
+        f"  Assigned To:        {_assignee_label(line)}\n"
     )
     if decision.escalate:
         text_body += (

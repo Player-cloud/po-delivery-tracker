@@ -29,6 +29,15 @@ def test_sends_one_reminder_per_line_and_logs_history(db, users, make_line, fake
     assert "is due in 7 days" in fake_sender.sent[0].subject
 
 
+def test_email_greets_and_names_the_assignee(db, users, make_line, fake_sender):
+    """M8, PRD §18.6 — address people by name."""
+    make_line(due_in_days=7, assigned_to=users["alice"])  # full_name "Alice Adams"
+    run_reminders(db, sender=fake_sender)
+    body = fake_sender.sent[0].text_body
+    assert body.startswith("Hi Alice,")
+    assert "Alice Adams <alice@corp.test>" in body
+
+
 def test_second_run_same_day_is_fully_deduped(db, users, make_line, fake_sender):
     make_line(due_in_days=7, assigned_to=users["alice"])
     run_reminders(db, sender=fake_sender)

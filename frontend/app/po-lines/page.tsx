@@ -25,11 +25,10 @@ export default function POLinesPage() {
 function POLines() {
   const params = useSearchParams();
   const focusParam = params.get("focus");
-  // Drill-through params set by the dashboard cards.
+  // Drill-through params set by the dashboard cards (no UI control of their own).
   const dueWithin = params.get("due_within");
   const deliveryStatusParam = params.get("delivery_status");
   const priorityParam = params.get("priority");
-  const poStatusParam = params.get("po_status");
   const searchRef = useRef<HTMLInputElement>(null);
 
   const [lines, setLines] = useState<POLine[]>([]);
@@ -37,6 +36,7 @@ function POLines() {
   const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
 
   const [status, setStatus] = useState(params.get("status") ?? "");
+  const [poStatus, setPoStatus] = useState(params.get("po_status") ?? "");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -52,18 +52,18 @@ function POLines() {
   const query = useMemo(() => {
     const p = new URLSearchParams();
     if (status) p.set("status", status);
+    if (poStatus) p.set("po_status", poStatus);
     if (debouncedSearch) p.set("search", debouncedSearch);
     if (dueWithin) p.set("due_within", dueWithin);
     if (deliveryStatusParam) p.set("delivery_status", deliveryStatusParam);
     if (priorityParam) p.set("priority", priorityParam);
-    if (poStatusParam) p.set("po_status", poStatusParam);
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [status, debouncedSearch, dueWithin, deliveryStatusParam, priorityParam, poStatusParam]);
+  }, [status, poStatus, debouncedSearch, dueWithin, deliveryStatusParam, priorityParam]);
 
   const loading = loadedQuery !== query;
-  const drilled = !!dueWithin || !!deliveryStatusParam || !!priorityParam || !!poStatusParam;
-  const filtered = !!status || !!debouncedSearch || drilled;
+  const drilled = !!dueWithin || !!deliveryStatusParam || !!priorityParam;
+  const filtered = !!status || !!poStatus || !!debouncedSearch || drilled;
 
   useEffect(() => {
     let ignore = false;
@@ -93,9 +93,7 @@ function POLines() {
       ? `Delivery: ${deliveryStatusParam.replace("_", " ")}`
       : priorityParam
         ? `Priority: ${priorityParam}`
-        : poStatusParam
-          ? `${poStatusParam[0].toUpperCase() + poStatusParam.slice(1)} POs`
-          : "";
+        : "";
 
   return (
     <div className={`${page} flex flex-col gap-4`}>
@@ -137,7 +135,7 @@ function POLines() {
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           className={input}
-          aria-label="Filter by status"
+          aria-label="Filter by urgency"
         >
           <option value="">All statuses</option>
           {STATUS_OPTIONS.map((s) => (
@@ -146,10 +144,23 @@ function POLines() {
             </option>
           ))}
         </select>
-        {(status || search) && (
+        <select
+          value={poStatus}
+          onChange={(e) => setPoStatus(e.target.value)}
+          className={input}
+          aria-label="Filter by PO status"
+        >
+          <option value="">Any PO status</option>
+          <option value="open">Pending PO</option>
+          <option value="delivered">Delivered PO</option>
+          <option value="closed">Closed PO</option>
+          <option value="cancelled">Cancelled PO</option>
+        </select>
+        {(status || poStatus || search) && (
           <button
             onClick={() => {
               setStatus("");
+              setPoStatus("");
               setSearch("");
             }}
             className="text-sm text-muted hover:text-ink"

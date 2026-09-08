@@ -34,7 +34,7 @@ const STATS: { key: keyof Summary; label: string; href: string; tone?: "danger" 
   { key: "due_1_30", label: "Due in 1–30 days", href: "/po-lines?due_within=30" },
   { key: "overdue", label: "Overdue", href: "/po-lines?status=Overdue", tone: "danger" },
   { key: "pos_delivered", label: "Delivered POs", href: "/po-lines?po_status=delivered" },
-  { key: "pos_closed", label: "Closed POs", href: "/po-lines?po_status=closed" },
+  { key: "completed", label: "Delivered lines", href: "/po-lines?delivery_status=complete" },
   { key: "high_priority", label: "High priority", href: "/po-lines?priority=high" },
 ];
 

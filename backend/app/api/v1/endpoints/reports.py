@@ -28,6 +28,7 @@ def run_report(
     po: str | None = None,
     priority: str | None = Query(default=None, pattern="^(high|medium|low)$"),
     delivery_status: str | None = Query(default=None, pattern="^(not_delivered|partial|complete)$"),
+    po_status: str | None = Query(default=None, pattern="^(open|delivered|closed|cancelled)$"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -38,6 +39,7 @@ def run_report(
         po=po,
         priority=priority,
         delivery_status=delivery_status,
+        po_status=po_status,
     )
     report = reports.build(db, current_user, name, filters)
     if report is None:

@@ -64,7 +64,21 @@ def dataset(db, users, make_line):
 
 def test_list_reports(client):
     names = {r["name"] for r in client.get("/api/v1/reports").json()}
-    assert names == {"overdue", "deliveries", "on_time", "by_assignee", "by_status"}
+    assert names == {"all_lines", "overdue", "deliveries", "on_time", "by_assignee", "by_status"}
+
+
+class TestAllLines:
+    def test_includes_every_visible_line(self, client, dataset):
+        body = client.get("/api/v1/reports/all_lines").json()
+        assert body["summary"]["count"] == 5  # the whole dataset
+
+    def test_po_status_filter(self, client, dataset):
+        # each make_line gets its own PO; the two complete lines -> two Delivered POs
+        delivered = client.get("/api/v1/reports/all_lines?po_status=delivered").json()
+        assert delivered["summary"]["count"] == 2
+        assert all(r["po_status"] == "Delivered" for r in delivered["rows"])
+        pending = client.get("/api/v1/reports/all_lines?po_status=open").json()
+        assert pending["summary"]["count"] == 3
 
 
 class TestOverdue:

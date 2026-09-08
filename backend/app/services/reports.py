@@ -27,6 +27,7 @@ class ReportFilters:
     po: str | None = None
     priority: str | None = None
     delivery_status: str | None = None
+    po_status: str | None = None
 
 
 @dataclass
@@ -58,6 +59,12 @@ def _common_filter(lines: list[POLine], f: ReportFilters) -> list[POLine]:
         out = [l for l in out if l.priority is not None and l.priority.value == f.priority]
     if f.delivery_status:
         out = [l for l in out if l.delivery_status.value == f.delivery_status]
+    if f.po_status:
+        out = [
+            l
+            for l in out
+            if l.purchase_order is not None and l.purchase_order.status.value == f.po_status
+        ]
     return out
 
 
@@ -255,7 +262,56 @@ def _by_status(lines: list[POLine], f: ReportFilters) -> Report:
     )
 
 
+def _remaining_label(days: int) -> str:
+    if days < 0:
+        return f"{-days}d overdue"
+    if days == 0:
+        return "due today"
+    return f"{days} day{'s' if days != 1 else ''}"
+
+
+def _all_lines(lines: list[POLine], f: ReportFilters) -> Report:
+    """Every PO line the user can see — no built-in status cut, so the filters
+    (or none) decide what's in it. Covers 'all PO lines, past or due'."""
+    rows = []
+    for l in _common_filter(lines, f):
+        if f.from_date and l.promised_delivery < f.from_date:
+            continue
+        if f.to_date and l.promised_delivery > f.to_date:
+            continue
+        rows.append(
+            {
+                "po_number": l.po_number,
+                "po_line": l.po_line,
+                "po_status": l.purchase_order.status.value.title() if l.purchase_order else "",
+                "promised_delivery": l.promised_delivery.isoformat(),
+                "remaining": "—" if l.delivered else _remaining_label(l.days_remaining),
+                "delivery_status": l.delivery_status.value.replace("_", " ").title(),
+                "assignee": _assignee_name(l),
+                "priority": l.priority.value if l.priority else "",
+            }
+        )
+    rows.sort(key=lambda r: r["promised_delivery"])
+    return Report(
+        name="all_lines",
+        label="All PO lines",
+        columns=[
+            {"key": "po_number", "label": "PO"},
+            {"key": "po_line", "label": "Line"},
+            {"key": "po_status", "label": "PO status"},
+            {"key": "promised_delivery", "label": "Promised"},
+            {"key": "remaining", "label": "Remaining"},
+            {"key": "delivery_status", "label": "Delivery"},
+            {"key": "assignee", "label": "Assignee"},
+            {"key": "priority", "label": "Priority"},
+        ],
+        rows=rows,
+        summary={"count": len(rows)},
+    )
+
+
 _BUILDERS = {
+    "all_lines": _all_lines,
     "overdue": _overdue,
     "deliveries": _deliveries,
     "on_time": _on_time,
@@ -264,6 +320,11 @@ _BUILDERS = {
 }
 
 REPORTS_META = [
+    {
+        "name": "all_lines",
+        "label": "All PO lines",
+        "description": "Every line in the system — filter it however you like, or not at all.",
+    },
     {
         "name": "overdue",
         "label": "Overdue lines",

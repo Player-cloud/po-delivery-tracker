@@ -22,6 +22,7 @@ type Filters = {
   po: string;
   priority: string;
   delivery_status: string;
+  po_status: string;
 };
 
 const EMPTY: Filters = {
@@ -31,14 +32,16 @@ const EMPTY: Filters = {
   po: "",
   priority: "",
   delivery_status: "",
+  po_status: "",
 };
 
 const REPORTS: ReportMeta[] = [
+  { name: "all_lines", label: "All PO lines", description: "Every line in the system — filter it however you like, or not at all." },
   { name: "overdue", label: "Overdue lines", description: "Every open line past its promised date." },
   { name: "deliveries", label: "Deliveries", description: "Lines completed within a date range." },
   { name: "on_time", label: "On-time delivery", description: "On-time vs late completions, by assignee." },
   { name: "by_assignee", label: "Lines by assignee", description: "Line counts per person, by delivery status." },
-  { name: "by_status", label: "Lines by delivery status", description: "How lines and quantity split across delivery states." },
+  { name: "by_status", label: "Lines by delivery status", description: "How lines split across delivery states." },
 ];
 
 function queryFrom(f: Filters): string {
@@ -49,11 +52,12 @@ function queryFrom(f: Filters): string {
   if (f.po) p.set("po", f.po);
   if (f.priority) p.set("priority", f.priority);
   if (f.delivery_status) p.set("delivery_status", f.delivery_status);
+  if (f.po_status) p.set("po_status", f.po_status);
   return p.toString();
 }
 
 export default function ReportsPage() {
-  const [name, setName] = useState("overdue");
+  const [name, setName] = useState("all_lines");
   const [draft, setDraft] = useState<Filters>(EMPTY);
   const [applied, setApplied] = useState<Filters>(EMPTY);
   const [users, setUsers] = useState<AssignableUser[]>([]);
@@ -230,21 +234,34 @@ export default function ReportsPage() {
             <option value="complete">Complete</option>
           </select>
         </label>
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          PO status
+          <select
+            value={draft.po_status}
+            onChange={(e) => setDraftField("po_status", e.target.value)}
+            className={input}
+          >
+            <option value="">Any</option>
+            <option value="open">Pending</option>
+            <option value="delivered">Delivered</option>
+            <option value="closed">Closed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </label>
         <button type="submit" disabled={!filtersDirty} className={btnPrimary}>
           Apply
         </button>
-        {(filtersDirty || query) && (
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(EMPTY);
-              setApplied(EMPTY);
-            }}
-            className={btnGhost}
-          >
-            Reset
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(EMPTY);
+            setApplied(EMPTY);
+          }}
+          disabled={!filtersDirty && !query}
+          className={btnGhost}
+        >
+          Clear filters
+        </button>
       </form>
 
       <div className="flex flex-wrap items-center gap-2">

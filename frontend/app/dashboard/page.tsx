@@ -7,9 +7,11 @@ import StatusBadge from "@/components/StatusBadge";
 import UrgencyBar from "@/components/UrgencyBar";
 import GettingStarted from "@/components/GettingStarted";
 import TourOverlay from "@/components/TourOverlay";
+import { assigneeLabel } from "@/lib/status";
 import { daysRemainingLabel } from "@/lib/urgency";
 import { useCountUp } from "@/hooks/useCountUp";
 import { card, h1, page } from "@/lib/ui";
+import type { POLine } from "@/lib/types";
 
 type Summary = {
   total_open: number;
@@ -20,23 +22,20 @@ type Summary = {
   overdue: number;
   completed: number;
   high_priority: number;
+  total_pos: number;
+  total_po_lines: number;
+  pos_delivered: number;
+  pos_closed: number;
+  due_1_30: number;
 };
 
-type AttentionLine = {
-  id: number;
-  po_number: string;
-  po_line: number;
-  promised_delivery: string;
-  days_remaining: number;
-  delivered: boolean;
-  assigned_to: { id: number; email: string } | null;
-};
-
-const KPIS: { key: keyof Summary; label: string; tone?: "danger" }[] = [
-  { key: "due_today", label: "Due today" },
-  { key: "overdue", label: "Overdue", tone: "danger" },
-  { key: "total_open", label: "Total open" },
-  { key: "high_priority", label: "High priority" },
+// Single-stat cards, each linking to the matching filtered list.
+const STATS: { key: keyof Summary; label: string; href: string; tone?: "danger" }[] = [
+  { key: "due_1_30", label: "Due in 1–30 days", href: "/po-lines?due_within=30" },
+  { key: "overdue", label: "Overdue", href: "/po-lines?status=Overdue", tone: "danger" },
+  { key: "pos_delivered", label: "POs delivered", href: "/purchase-orders?status=delivered" },
+  { key: "pos_closed", label: "POs closed", href: "/purchase-orders?status=closed" },
+  { key: "high_priority", label: "High priority", href: "/po-lines?priority=high" },
 ];
 
 function greeting() {
@@ -46,7 +45,7 @@ function greeting() {
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [attention, setAttention] = useState<AttentionLine[] | null>(null);
+  const [attention, setAttention] = useState<POLine[] | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [tourOpen, setTourOpen] = useState(false);
@@ -63,7 +62,7 @@ export default function DashboardPage() {
         if (ignore) return;
         setSummary(s);
         setAttention(a);
-        if (me?.email) setName(me.email.split("@")[0]);
+        if (me) setName(me.full_name?.split(" ")[0] ?? me.email?.split("@")[0] ?? "");
       } catch {
         if (!ignore) setError("Could not load the dashboard");
       }
@@ -96,9 +95,26 @@ export default function DashboardPage() {
         <GettingStarted onStartTour={() => setTourOpen(true)} />
 
         <div className="grid gap-3.5 sm:grid-cols-2">
-          {KPIS.map((k, i) => (
-            <KpiCard key={k.key} label={k.label} value={summary[k.key]} tone={k.tone} delay={i * 60} />
+          <Link
+            href="/purchase-orders"
+            className={`animate-rise ${card} flex items-center gap-6 p-4 transition-colors hover:bg-surface-tint sm:col-span-2`}
+          >
+            <Stat label="Purchase orders" value={summary.total_pos} />
+            <span className="h-9 w-px bg-line" aria-hidden />
+            <Stat label="PO lines" value={summary.total_po_lines} />
+          </Link>
+
+          {STATS.map((s, i) => (
+            <StatCard
+              key={s.key}
+              label={s.label}
+              value={summary[s.key]}
+              href={s.href}
+              tone={s.tone}
+              delay={i * 60}
+            />
           ))}
+
           <div className="sm:col-span-2">
             <UrgencyBar counts={summary} />
           </div>
@@ -130,7 +146,7 @@ export default function DashboardPage() {
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-muted">
                     <span className="font-mono">{l.promised_delivery}</span>
                     <span>· {daysRemainingLabel(l.days_remaining)}</span>
-                    <span className="w-full truncate">{l.assigned_to?.email ?? "—"}</span>
+                    <span className="w-full truncate">{assigneeLabel(l.assigned_to)}</span>
                   </div>
                   <Link
                     href={`/po-lines/edit?id=${l.id}`}
@@ -163,7 +179,7 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-5 py-3 font-mono text-muted">{l.promised_delivery}</td>
                       <td className="px-5 py-3 text-muted">{daysRemainingLabel(l.days_remaining)}</td>
-                      <td className="px-5 py-3 text-muted">{l.assigned_to?.email ?? "—"}</td>
+                      <td className="px-5 py-3 text-muted">{assigneeLabel(l.assigned_to)}</td>
                       <td className="px-5 py-3">
                         <StatusBadge delivered={l.delivered} days_remaining={l.days_remaining} />
                       </td>
@@ -189,22 +205,35 @@ export default function DashboardPage() {
   );
 }
 
-function KpiCard({
+function Stat({ label, value }: { label: string; value: number }) {
+  const shown = useCountUp(value);
+  return (
+    <span className="flex flex-col gap-1">
+      <span className="text-xs text-muted">{label}</span>
+      <span className="font-display text-[28px] font-semibold tabular-nums">{shown}</span>
+    </span>
+  );
+}
+
+function StatCard({
   label,
   value,
+  href,
   tone,
   delay,
 }: {
   label: string;
   value: number;
+  href: string;
   tone?: "danger";
   delay: number;
 }) {
   const shown = useCountUp(value);
   return (
-    <div
-      className={`animate-rise ${card} flex flex-col gap-1 p-4 ${
-        tone === "danger" ? "border-overdue/25 bg-overdue-tint" : ""
+    <Link
+      href={href}
+      className={`animate-rise ${card} flex flex-col gap-1 p-4 transition-colors hover:bg-surface-tint ${
+        tone === "danger" ? "border-overdue/25 bg-overdue-tint hover:bg-overdue-tint/70" : ""
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -218,6 +247,6 @@ function KpiCard({
       >
         {shown}
       </span>
-    </div>
+    </Link>
   );
 }

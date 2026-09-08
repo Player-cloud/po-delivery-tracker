@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/useAuth";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", adminOnly: false },
+  { href: "/purchase-orders", label: "Purchase Orders", adminOnly: false },
   { href: "/po-lines", label: "PO Lines", adminOnly: false },
   { href: "/admin/thresholds", label: "Alert Thresholds", adminOnly: true },
   { href: "/admin/users", label: "Users", adminOnly: true },

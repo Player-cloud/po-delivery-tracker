@@ -6,17 +6,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 import { Field, control } from "@/components/Field";
+import { assigneeLabel } from "@/lib/status";
 import { btnGhost, btnPrimary, card, h1 } from "@/lib/ui";
+import type { AssignableUser, DeliveryStatus } from "@/lib/types";
 
 type FormState = {
+  po_number: string;
+  po_line: number;
+  quantity: string;
   promised_delivery: string;
   assigned_to_id: string;
   priority: string;
   notes: string;
-  delivered: boolean;
+  delivery_status: DeliveryStatus;
 };
-
-type AssignableUser = { id: number; email: string };
 
 export default function EditPOLinePage() {
   return (
@@ -61,11 +64,14 @@ function EditPOLine() {
         const data = await res.json();
         if (!ignore) {
           setForm({
+            po_number: data.po_number,
+            po_line: data.po_line,
+            quantity: String(data.quantity),
             promised_delivery: data.promised_delivery,
             assigned_to_id: data.assigned_to_id ? String(data.assigned_to_id) : "",
             priority: data.priority || "",
             notes: data.notes || "",
-            delivered: data.delivered,
+            delivery_status: data.delivery_status,
           });
         }
       } catch {
@@ -90,11 +96,12 @@ function EditPOLine() {
     const response = await apiFetch(`/po-lines/${id}`, {
       method: "PUT",
       body: JSON.stringify({
+        quantity: Number(form.quantity),
         promised_delivery: form.promised_delivery,
         assigned_to_id: Number(form.assigned_to_id),
         priority: form.priority || null,
         notes: form.notes || null,
-        delivered: form.delivered,
+        delivery_status: form.delivery_status,
       }),
     });
 
@@ -114,18 +121,35 @@ function EditPOLine() {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-6 sm:px-6">
-      <h1 className={h1}>Edit PO Line</h1>
+      <div>
+        <h1 className={h1}>Edit PO Line</h1>
+        <p className="mt-1 text-sm text-muted">
+          PO {form.po_number} · Line {form.po_line}
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className={`${card} flex flex-col gap-4 p-6`}>
-        <Field label="Promised delivery">
-          <input
-            type="date"
-            value={form.promised_delivery}
-            onChange={(e) => updateField("promised_delivery", e.target.value)}
-            className={control}
-            required
-          />
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Quantity">
+            <input
+              type="number"
+              min={1}
+              value={form.quantity}
+              onChange={(e) => updateField("quantity", e.target.value)}
+              className={control}
+              required
+            />
+          </Field>
+          <Field label="Promised delivery">
+            <input
+              type="date"
+              value={form.promised_delivery}
+              onChange={(e) => updateField("promised_delivery", e.target.value)}
+              className={control}
+              required
+            />
+          </Field>
+        </div>
 
         <Field label="Assigned to" hint="Reminders go to this person.">
           <select
@@ -139,24 +163,37 @@ function EditPOLine() {
             </option>
             {users.map((u) => (
               <option key={u.id} value={String(u.id)}>
-                {u.email}
+                {assigneeLabel(u)}
               </option>
             ))}
           </select>
         </Field>
 
-        <Field label="Priority">
-          <select
-            value={form.priority}
-            onChange={(e) => updateField("priority", e.target.value)}
-            className={control}
-          >
-            <option value="">None</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Delivery status">
+            <select
+              value={form.delivery_status}
+              onChange={(e) => updateField("delivery_status", e.target.value as DeliveryStatus)}
+              className={control}
+            >
+              <option value="not_delivered">Not delivered</option>
+              <option value="partial">Partial</option>
+              <option value="complete">Complete</option>
+            </select>
+          </Field>
+          <Field label="Priority">
+            <select
+              value={form.priority}
+              onChange={(e) => updateField("priority", e.target.value)}
+              className={control}
+            >
+              <option value="">None</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </Field>
+        </div>
 
         <Field label="Notes">
           <textarea
@@ -166,16 +203,6 @@ function EditPOLine() {
             rows={3}
           />
         </Field>
-
-        <label className="flex items-center gap-2.5 text-sm">
-          <input
-            type="checkbox"
-            checked={form.delivered}
-            onChange={(e) => updateField("delivered", e.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-          Mark as delivered
-        </label>
 
         {error && <p className="text-sm text-overdue-on">{error}</p>}
 

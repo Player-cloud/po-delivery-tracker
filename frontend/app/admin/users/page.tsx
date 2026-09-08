@@ -9,6 +9,7 @@ import { btnPrimary, card, h1, input, page } from "@/lib/ui";
 type User = {
   id: number;
   email: string;
+  full_name: string | null;
   role: string;
   active: boolean;
   created_at: string;
@@ -31,6 +32,7 @@ function Users() {
   const [error, setError] = useState("");
 
   // new-user form
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("staff");
@@ -73,7 +75,7 @@ function Users() {
     setError("");
     const res = await apiFetch("/users", {
       method: "POST",
-      body: JSON.stringify({ email, password, role }),
+      body: JSON.stringify({ full_name: fullName.trim(), email, password, role }),
     });
     setCreating(false);
     if (!res.ok) {
@@ -81,6 +83,7 @@ function Users() {
       setError(typeof data.detail === "string" ? data.detail : "Could not create user");
       return;
     }
+    setFullName("");
     setEmail("");
     setPassword("");
     setRole("staff");
@@ -103,6 +106,11 @@ function Users() {
     if (pw) void patch(u.id, { password: pw });
   }
 
+  function renameUser(u: User) {
+    const name = window.prompt(`Full name for ${u.email}:`, u.full_name ?? "");
+    if (name !== null) void patch(u.id, { full_name: name.trim() });
+  }
+
   if (!loaded && !error) return <p className={`${page} text-muted`}>Loading…</p>;
 
   return (
@@ -113,6 +121,15 @@ function Users() {
         onSubmit={handleCreate}
         className={`${card} flex flex-wrap items-end gap-3 p-4`}
       >
+        <input
+          type="text"
+          placeholder="Full name"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+          className={input}
+          aria-label="New user full name"
+        />
         <input
           type="email"
           placeholder="Email"
@@ -155,6 +172,7 @@ function Users() {
           <table className="w-full min-w-[560px] text-left text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
+                <th className="px-5 py-3 font-medium">Name</th>
                 <th className="px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3 font-medium">Role</th>
                 <th className="px-5 py-3 font-medium">Active</th>
@@ -168,9 +186,16 @@ function Users() {
                 return (
                   <tr key={u.id} className="border-t border-line/70">
                     <td className="px-5 py-3">
-                      {u.email}
+                      <button
+                        onClick={() => renameUser(u)}
+                        className="text-left hover:text-accent"
+                        title="Edit name"
+                      >
+                        {u.full_name || <span className="text-faint">— set name —</span>}
+                      </button>
                       {isSelf && <span className="ml-2 text-xs text-faint">(you)</span>}
                     </td>
+                    <td className="px-5 py-3 text-muted">{u.email}</td>
                     <td className="px-5 py-3">
                       <select
                         value={u.role}

@@ -5,19 +5,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
+import { DeliveryPill } from "@/components/Pill";
+import { assigneeLabel } from "@/lib/status";
 import { daysRemainingLabel } from "@/lib/urgency";
 import { card, h1, input, page } from "@/lib/ui";
-
-type POLine = {
-  id: number;
-  po_number: string;
-  po_line: number;
-  promised_delivery: string;
-  days_remaining: number;
-  status: string;
-  delivered: boolean;
-  assigned_to: { id: number; email: string } | null;
-};
+import type { POLine } from "@/lib/types";
 
 // Values the API's ?status= filter understands (app/models/po_line.py Status).
 const STATUS_OPTIONS = ["Upcoming", "Due Today", "Overdue", "Delivered"];
@@ -31,14 +23,19 @@ export default function POLinesPage() {
 }
 
 function POLines() {
-  const focusParam = useSearchParams().get("focus");
+  const params = useSearchParams();
+  const focusParam = params.get("focus");
+  // Drill-through params set by the dashboard cards.
+  const dueWithin = params.get("due_within");
+  const deliveryStatusParam = params.get("delivery_status");
+  const priorityParam = params.get("priority");
   const searchRef = useRef<HTMLInputElement>(null);
 
   const [lines, setLines] = useState<POLine[]>([]);
   const [error, setError] = useState("");
   const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
 
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(params.get("status") ?? "");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -55,12 +52,16 @@ function POLines() {
     const p = new URLSearchParams();
     if (status) p.set("status", status);
     if (debouncedSearch) p.set("search", debouncedSearch);
+    if (dueWithin) p.set("due_within", dueWithin);
+    if (deliveryStatusParam) p.set("delivery_status", deliveryStatusParam);
+    if (priorityParam) p.set("priority", priorityParam);
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [status, debouncedSearch]);
+  }, [status, debouncedSearch, dueWithin, deliveryStatusParam, priorityParam]);
 
   const loading = loadedQuery !== query;
-  const filtered = !!status || !!debouncedSearch;
+  const drilled = !!dueWithin || !!deliveryStatusParam || !!priorityParam;
+  const filtered = !!status || !!debouncedSearch || drilled;
 
   useEffect(() => {
     let ignore = false;
@@ -84,6 +85,14 @@ function POLines() {
     };
   }, [query]);
 
+  const drillLabel = dueWithin
+    ? `Due in 1–${dueWithin} days`
+    : deliveryStatusParam
+      ? `Delivery: ${deliveryStatusParam.replace("_", " ")}`
+      : priorityParam
+        ? `Priority: ${priorityParam}`
+        : "";
+
   return (
     <div className={`${page} flex flex-col gap-4`}>
       <div className="flex items-center justify-between">
@@ -92,6 +101,17 @@ function POLines() {
           {loading ? "…" : `${lines.length} line${lines.length === 1 ? "" : "s"}`}
         </span>
       </div>
+
+      {drilled && (
+        <div className="flex items-center gap-2 text-[12.5px]">
+          <span className="rounded-full bg-accent-soft px-2.5 py-0.5 font-medium text-accent-hover">
+            {drillLabel}
+          </span>
+          <Link href="/po-lines" className="text-muted hover:text-ink">
+            Clear
+          </Link>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="flex items-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface px-3 py-2">
@@ -122,7 +142,7 @@ function POLines() {
             </option>
           ))}
         </select>
-        {filtered && (
+        {(status || search) && (
           <button
             onClick={() => {
               setStatus("");
@@ -156,6 +176,10 @@ function POLines() {
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px] text-muted">
                   <div>
+                    <dt className="text-faint">Qty</dt>
+                    <dd>{line.quantity}</dd>
+                  </div>
+                  <div>
                     <dt className="text-faint">Promised</dt>
                     <dd className="font-mono">{line.promised_delivery}</dd>
                   </div>
@@ -163,9 +187,15 @@ function POLines() {
                     <dt className="text-faint">Remaining</dt>
                     <dd>{line.delivered ? "—" : daysRemainingLabel(line.days_remaining)}</dd>
                   </div>
+                  <div>
+                    <dt className="text-faint">Delivery</dt>
+                    <dd>
+                      <DeliveryPill status={line.delivery_status} />
+                    </dd>
+                  </div>
                   <div className="col-span-2">
                     <dt className="text-faint">Assignee</dt>
-                    <dd className="truncate">{line.assigned_to?.email ?? "—"}</dd>
+                    <dd className="truncate">{assigneeLabel(line.assigned_to)}</dd>
                   </div>
                 </dl>
                 <div className="flex gap-4 pt-1 text-[12.5px]">
@@ -186,13 +216,15 @@ function POLines() {
           {/* Tablet landscape and up: table */}
           <div className={`${card} hidden overflow-hidden md:block`}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-[12.5px]">
+              <table className="w-full min-w-[760px] text-left text-[12.5px]">
                 <thead>
                   <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
                     <th className="px-5 py-3 font-medium">PO Number</th>
                     <th className="px-5 py-3 font-medium">Line</th>
+                    <th className="px-5 py-3 font-medium">Qty</th>
                     <th className="px-5 py-3 font-medium">Promised</th>
                     <th className="px-5 py-3 font-medium">Remaining</th>
+                    <th className="px-5 py-3 font-medium">Delivery</th>
                     <th className="px-5 py-3 font-medium">Assignee</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3" />
@@ -201,13 +233,24 @@ function POLines() {
                 <tbody>
                   {lines.map((line) => (
                     <tr key={line.id} className="border-t border-line/70 hover:bg-surface-tint">
-                      <td className="px-5 py-3 font-semibold">{line.po_number}</td>
+                      <td className="px-5 py-3 font-semibold">
+                        <Link
+                          href={`/purchase-orders/detail?id=${line.purchase_order_id}`}
+                          className="hover:text-accent"
+                        >
+                          {line.po_number}
+                        </Link>
+                      </td>
                       <td className="px-5 py-3 font-mono">{line.po_line}</td>
+                      <td className="px-5 py-3">{line.quantity}</td>
                       <td className="px-5 py-3 font-mono text-muted">{line.promised_delivery}</td>
                       <td className="px-5 py-3 text-muted">
                         {line.delivered ? "—" : daysRemainingLabel(line.days_remaining)}
                       </td>
-                      <td className="px-5 py-3 text-muted">{line.assigned_to?.email ?? "—"}</td>
+                      <td className="px-5 py-3">
+                        <DeliveryPill status={line.delivery_status} />
+                      </td>
+                      <td className="px-5 py-3 text-muted">{assigneeLabel(line.assigned_to)}</td>
                       <td className="px-5 py-3">
                         <StatusBadge delivered={line.delivered} days_remaining={line.days_remaining} />
                       </td>

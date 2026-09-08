@@ -1,41 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { extractErrorMessage } from "@/lib/errors";
+import { assigneeLabel } from "@/lib/status";
 import { Field, control } from "@/components/Field";
 import { btnGhost, btnPrimary, card, h1 } from "@/lib/ui";
+import type { AssignableUser, DeliveryStatus } from "@/lib/types";
 
 type FormState = {
   po_number: string;
   po_line: string;
+  quantity: string;
   issue_date: string;
   promised_delivery: string;
+  delivery_status: DeliveryStatus;
   assigned_to_id: string;
   priority: string;
   notes: string;
 };
 
-type AssignableUser = { id: number; email: string };
-
 const initialForm: FormState = {
   po_number: "",
   po_line: "",
+  quantity: "1",
   issue_date: "",
   promised_delivery: "",
+  delivery_status: "not_delivered",
   assigned_to_id: "",
   priority: "",
   notes: "",
 };
 
 export default function NewPOLinePage() {
-  const [form, setForm] = useState<FormState>(initialForm);
+  return (
+    <Suspense fallback={<p className="mx-auto max-w-lg p-6 text-muted">Loading…</p>}>
+      <NewPOLine />
+    </Suspense>
+  );
+}
+
+function NewPOLine() {
+  const router = useRouter();
+  const poParam = useSearchParams().get("po");
+
+  const [form, setForm] = useState<FormState>(() =>
+    poParam ? { ...initialForm, po_number: poParam } : initialForm,
+  );
   const [users, setUsers] = useState<AssignableUser[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     let ignore = false;
@@ -53,7 +69,7 @@ export default function NewPOLinePage() {
     };
   }, []);
 
-  function set(field: keyof FormState, value: string) {
+  function set<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -66,8 +82,10 @@ export default function NewPOLinePage() {
       body: JSON.stringify({
         po_number: form.po_number,
         po_line: Number(form.po_line),
+        quantity: Number(form.quantity),
         issue_date: form.issue_date,
         promised_delivery: form.promised_delivery,
+        delivery_status: form.delivery_status,
         assigned_to_id: Number(form.assigned_to_id),
         priority: form.priority || null,
         notes: form.notes || null,
@@ -86,14 +104,14 @@ export default function NewPOLinePage() {
       <h1 className={`${h1} mb-4`}>New PO Line</h1>
 
       <form onSubmit={handleSubmit} className={`${card} flex flex-col gap-4 p-6`}>
-        <div className="grid grid-cols-[1fr_120px] gap-3">
+        <div className="grid grid-cols-[1fr_90px_90px] gap-3">
           <Field label="PO Number">
             <input
               value={form.po_number}
               onChange={(e) => set("po_number", e.target.value)}
               className={control}
               required
-              autoFocus
+              autoFocus={!poParam}
             />
           </Field>
           <Field label="Line">
@@ -102,6 +120,16 @@ export default function NewPOLinePage() {
               min={1}
               value={form.po_line}
               onChange={(e) => set("po_line", e.target.value)}
+              className={control}
+              required
+            />
+          </Field>
+          <Field label="Qty">
+            <input
+              type="number"
+              min={1}
+              value={form.quantity}
+              onChange={(e) => set("quantity", e.target.value)}
               className={control}
               required
             />
@@ -141,24 +169,37 @@ export default function NewPOLinePage() {
             </option>
             {users.map((u) => (
               <option key={u.id} value={String(u.id)}>
-                {u.email}
+                {assigneeLabel(u)}
               </option>
             ))}
           </select>
         </Field>
 
-        <Field label="Priority">
-          <select
-            value={form.priority}
-            onChange={(e) => set("priority", e.target.value)}
-            className={control}
-          >
-            <option value="">None</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Delivery status">
+            <select
+              value={form.delivery_status}
+              onChange={(e) => set("delivery_status", e.target.value as DeliveryStatus)}
+              className={control}
+            >
+              <option value="not_delivered">Not delivered</option>
+              <option value="partial">Partial</option>
+              <option value="complete">Complete</option>
+            </select>
+          </Field>
+          <Field label="Priority">
+            <select
+              value={form.priority}
+              onChange={(e) => set("priority", e.target.value)}
+              className={control}
+            >
+              <option value="">None</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </Field>
+        </div>
 
         <Field label="Notes">
           <textarea

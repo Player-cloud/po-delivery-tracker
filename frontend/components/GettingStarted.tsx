@@ -52,7 +52,7 @@ export default function GettingStarted({ onStartTour }: { onStartTour: () => voi
   if (dismissed || doneCount >= totalCount) return null;
 
   return (
-    <div className={`${card} animate-rise p-[17px]`}>
+    <div className={`${card} animate-rise w-full p-[17px] sm:max-w-md`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="font-display text-[13.5px] font-semibold">Getting started</span>
         <span className="text-[11px] text-muted">

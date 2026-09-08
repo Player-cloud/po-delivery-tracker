@@ -91,35 +91,37 @@ export default function DashboardPage() {
         </span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[288px_1fr]">
-        <GettingStarted onStartTour={() => setTourOpen(true)} />
+      <GettingStarted onStartTour={() => setTourOpen(true)} />
 
-        <div className="grid gap-3.5 sm:grid-cols-2">
-          <Link
-            href="/purchase-orders"
-            className={`animate-rise ${card} flex items-center gap-6 p-4 transition-colors hover:bg-surface-tint sm:col-span-2`}
-          >
-            <Stat label="Purchase orders" value={summary.total_pos} />
-            <span className="h-9 w-px bg-line" aria-hidden />
-            <Stat label="PO lines" value={summary.total_po_lines} />
-          </Link>
-
-          {STATS.map((s, i) => (
-            <StatCard
-              key={s.key}
-              label={s.label}
-              value={summary[s.key]}
-              href={s.href}
-              tone={s.tone}
-              delay={i * 60}
-            />
-          ))}
-
-          <div className="sm:col-span-2">
-            <UrgencyBar counts={summary} />
-          </div>
-        </div>
+      {/* Combined "purchase orders" card — each part links to its own list. */}
+      <div
+        className={`animate-rise ${card} grid grid-cols-3 divide-x divide-line overflow-hidden`}
+      >
+        <StatLink href="/purchase-orders" label="Purchase orders" value={summary.total_pos} />
+        <StatLink href="/po-lines" label="PO lines" value={summary.total_po_lines} />
+        <Link
+          href="/po-lines"
+          className="flex flex-col justify-center gap-1 p-4 transition-colors hover:bg-surface-tint"
+        >
+          <span className="text-xs text-muted">All lines &amp; POs</span>
+          <span className="font-display text-[17px] font-semibold text-accent">View all &rarr;</span>
+        </Link>
       </div>
+
+      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
+        {STATS.map((s, i) => (
+          <StatCard
+            key={s.key}
+            label={s.label}
+            value={summary[s.key]}
+            href={s.href}
+            tone={s.tone}
+            delay={i * 60}
+          />
+        ))}
+      </div>
+
+      <UrgencyBar counts={summary} />
 
       <div className={`${card} animate-rise overflow-hidden`}>
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
@@ -205,13 +207,16 @@ export default function DashboardPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function StatLink({ href, label, value }: { href: string; label: string; value: number }) {
   const shown = useCountUp(value);
   return (
-    <span className="flex flex-col gap-1">
+    <Link
+      href={href}
+      className="flex flex-col gap-1 p-4 transition-colors hover:bg-surface-tint"
+    >
       <span className="text-xs text-muted">{label}</span>
       <span className="font-display text-[28px] font-semibold tabular-nums">{shown}</span>
-    </span>
+    </Link>
   );
 }
 

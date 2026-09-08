@@ -263,7 +263,7 @@ export default function ReportsPage() {
 
       {error && <p className="text-sm text-overdue-on">{error}</p>}
 
-      {data && (
+      {data && Array.isArray(data.columns) && (
         <div className={`${card} overflow-hidden`}>
           {data.summary && (
             <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-line px-5 py-3 text-[12.5px]">

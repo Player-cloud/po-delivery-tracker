@@ -72,6 +72,7 @@ def make_line(db, users):
         due_in_days: int,
         delivered: bool = False,
         delivery_status: DeliveryStatus | None = None,
+        delivered_at=None,
         assigned_to=_DEFAULT,
         po_number=None,
         po_line: int | None = None,
@@ -98,6 +99,7 @@ def make_line(db, users):
             issue_date=date.today() - timedelta(days=30),
             promised_delivery=date.today() + timedelta(days=due_in_days),
             delivery_status=delivery_status,
+            delivered_at=delivered_at,
             priority=Priority.MEDIUM,
             assigned_to_id=assignee.id if assignee is not None else None,
         )

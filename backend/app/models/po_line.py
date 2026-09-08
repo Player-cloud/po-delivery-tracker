@@ -79,6 +79,11 @@ class POLine(Base):
         default=DeliveryStatus.NOT_DELIVERED,
         index=True,
     )
+    # When the line last became COMPLETE — cleared if it's reopened (M8 reports:
+    # "deliveries in a date range", on-time %). Set by crud.po_line.
+    delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     # Required (PRD §14 Q2): every PO line has an owner who receives its reminders.
     assigned_to_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -125,6 +130,13 @@ class POLine(Base):
     def delivered(self) -> bool:
         """Back-compat shim for callers that predate `delivery_status` (M8)."""
         return self.delivery_status == DeliveryStatus.COMPLETE
+
+    @property
+    def delivered_on_time(self) -> bool | None:
+        """True/False once the line is COMPLETE and dated; None otherwise."""
+        if self.delivery_status != DeliveryStatus.COMPLETE or self.delivered_at is None:
+            return None
+        return self.delivered_at.date() <= self.promised_delivery
 
     # ---- computed, never stored ----
 

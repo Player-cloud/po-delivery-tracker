@@ -3,7 +3,7 @@ Data-access layer for PO lines. Route handlers (app.api.v1.endpoints.po_lines)
 stay thin and just call into here — keeps business rules in one testable place.
 """
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -122,6 +122,8 @@ def create_po_line(db: Session, data: POLineCreate, current_user: User) -> POLin
         created_by_id=current_user.id,
         modified_by_id=current_user.id,
     )
+    if po_line.delivery_status == DeliveryStatus.COMPLETE:
+        po_line.delivered_at = datetime.now(UTC)
     db.add(po_line)
     db.flush()
     db.refresh(po)
@@ -139,8 +141,12 @@ def update_po_line(db: Session, po_line: POLine, data: POLineUpdate, current_use
         setattr(po_line, field, value)
 
     new_delivery = _delivery_status_from_update(data)
-    if new_delivery is not None:
+    if new_delivery is not None and new_delivery != po_line.delivery_status:
         po_line.delivery_status = new_delivery
+        # Track the delivered date for the M8 reports; clear it if reopened.
+        po_line.delivered_at = (
+            datetime.now(UTC) if new_delivery == DeliveryStatus.COMPLETE else None
+        )
 
     po_line.modified_by_id = current_user.id
     db.flush()

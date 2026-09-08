@@ -27,6 +27,7 @@ class POLineBase(BaseModel):
     quantity: int = 1
     issue_date: date
     promised_delivery: date
+    delivery_status: DeliveryStatus = DeliveryStatus.NOT_DELIVERED
     assigned_to_id: int  # required (PRD §14 Q2) — every PO line has an owner
     priority: Priority | None = None
     notes: str | None = None
@@ -107,6 +108,7 @@ class POLineOut(BaseModel):
     promised_delivery: date
     delivery_status: DeliveryStatus
     delivered: bool  # back-compat: delivery_status == COMPLETE (model property)
+    delivered_at: datetime | None
     priority: Priority | None
     notes: str | None
 

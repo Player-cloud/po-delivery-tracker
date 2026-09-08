@@ -140,12 +140,12 @@ function Detail() {
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px] text-muted">
                   <div>
-                    <dt className="text-faint">Qty</dt>
-                    <dd>{l.quantity}</dd>
-                  </div>
-                  <div>
                     <dt className="text-faint">Promised</dt>
                     <dd className="font-mono">{l.promised_delivery}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-faint">Remaining</dt>
+                    <dd>{l.delivered ? "—" : daysRemainingLabel(l.days_remaining)}</dd>
                   </div>
                   <div className="col-span-2">
                     <dt className="text-faint">Assignee</dt>
@@ -162,11 +162,10 @@ function Detail() {
           {/* Tablet+ : table */}
           <div className={`${card} hidden overflow-hidden md:block`}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-[12.5px]">
+              <table className="w-full min-w-[600px] text-left text-[12.5px]">
                 <thead>
                   <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
                     <th className="px-5 py-3 font-medium">Line</th>
-                    <th className="px-5 py-3 font-medium">Qty</th>
                     <th className="px-5 py-3 font-medium">Promised</th>
                     <th className="px-5 py-3 font-medium">Remaining</th>
                     <th className="px-5 py-3 font-medium">Delivery</th>
@@ -179,7 +178,6 @@ function Detail() {
                   {po.lines.map((l) => (
                     <tr key={l.id} className="border-t border-line/70 hover:bg-surface-tint">
                       <td className="px-5 py-3 font-mono font-semibold">{l.po_line}</td>
-                      <td className="px-5 py-3">{l.quantity}</td>
                       <td className="px-5 py-3 font-mono text-muted">{l.promised_delivery}</td>
                       <td className="px-5 py-3 text-muted">
                         {l.delivered ? "—" : daysRemainingLabel(l.days_remaining)}

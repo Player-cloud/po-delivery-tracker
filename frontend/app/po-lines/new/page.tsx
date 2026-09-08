@@ -13,7 +13,6 @@ import type { AssignableUser, DeliveryStatus } from "@/lib/types";
 type FormState = {
   po_number: string;
   po_line: string;
-  quantity: string;
   issue_date: string;
   promised_delivery: string;
   delivery_status: DeliveryStatus;
@@ -25,7 +24,6 @@ type FormState = {
 const initialForm: FormState = {
   po_number: "",
   po_line: "",
-  quantity: "1",
   issue_date: "",
   promised_delivery: "",
   delivery_status: "not_delivered",
@@ -82,7 +80,6 @@ function NewPOLine() {
       body: JSON.stringify({
         po_number: form.po_number,
         po_line: Number(form.po_line),
-        quantity: Number(form.quantity),
         issue_date: form.issue_date,
         promised_delivery: form.promised_delivery,
         delivery_status: form.delivery_status,
@@ -104,7 +101,7 @@ function NewPOLine() {
       <h1 className={`${h1} mb-4`}>New PO Line</h1>
 
       <form onSubmit={handleSubmit} className={`${card} flex flex-col gap-4 p-6`}>
-        <div className="grid grid-cols-[1fr_90px_90px] gap-3">
+        <div className="grid grid-cols-[1fr_100px] gap-3">
           <Field label="PO Number">
             <input
               value={form.po_number}
@@ -120,16 +117,6 @@ function NewPOLine() {
               min={1}
               value={form.po_line}
               onChange={(e) => set("po_line", e.target.value)}
-              className={control}
-              required
-            />
-          </Field>
-          <Field label="Qty">
-            <input
-              type="number"
-              min={1}
-              value={form.quantity}
-              onChange={(e) => set("quantity", e.target.value)}
               className={control}
               required
             />

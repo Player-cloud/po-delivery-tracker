@@ -77,7 +77,6 @@ def _overdue(lines: list[POLine], f: ReportFilters) -> Report:
             {
                 "po_number": l.po_number,
                 "po_line": l.po_line,
-                "quantity": l.quantity,
                 "promised_delivery": l.promised_delivery.isoformat(),
                 "days_overdue": -l.days_remaining,
                 "delivery_status": l.delivery_status.value,
@@ -92,7 +91,6 @@ def _overdue(lines: list[POLine], f: ReportFilters) -> Report:
         columns=[
             {"key": "po_number", "label": "PO"},
             {"key": "po_line", "label": "Line"},
-            {"key": "quantity", "label": "Qty"},
             {"key": "promised_delivery", "label": "Promised"},
             {"key": "days_overdue", "label": "Days overdue"},
             {"key": "delivery_status", "label": "Delivery"},
@@ -118,7 +116,6 @@ def _deliveries(lines: list[POLine], f: ReportFilters) -> Report:
             {
                 "po_number": l.po_number,
                 "po_line": l.po_line,
-                "quantity": l.quantity,
                 "promised_delivery": l.promised_delivery.isoformat(),
                 "delivered_on": d.isoformat(),
                 "on_time": "Yes" if l.delivered_on_time else "No",
@@ -133,7 +130,6 @@ def _deliveries(lines: list[POLine], f: ReportFilters) -> Report:
         columns=[
             {"key": "po_number", "label": "PO"},
             {"key": "po_line", "label": "Line"},
-            {"key": "quantity", "label": "Qty"},
             {"key": "promised_delivery", "label": "Promised"},
             {"key": "delivered_on", "label": "Delivered on"},
             {"key": "on_time", "label": "On time"},
@@ -235,18 +231,17 @@ def _by_assignee(lines: list[POLine], f: ReportFilters) -> Report:
 
 
 def _by_status(lines: list[POLine], f: ReportFilters) -> Report:
-    buckets: dict[str, dict] = {s.value: {"lines": 0, "quantity": 0} for s in DeliveryStatus}
+    counts: Counter = Counter({s.value: 0 for s in DeliveryStatus})
     for l in _common_filter(lines, f):
-        b = buckets[l.delivery_status.value]
-        b["lines"] += 1
-        b["quantity"] += l.quantity
+        counts[l.delivery_status.value] += 1
+    total = sum(counts.values())
     rows = [
         {
             "delivery_status": k.replace("_", " ").title(),
-            "lines": v["lines"],
-            "quantity": v["quantity"],
+            "lines": n,
+            "share": f"{round(100 * n / total)}%" if total else "0%",
         }
-        for k, v in buckets.items()
+        for k, n in counts.items()
     ]
     return Report(
         name="by_status",
@@ -254,7 +249,7 @@ def _by_status(lines: list[POLine], f: ReportFilters) -> Report:
         columns=[
             {"key": "delivery_status", "label": "Delivery status"},
             {"key": "lines", "label": "Lines"},
-            {"key": "quantity", "label": "Total qty"},
+            {"key": "share", "label": "Share"},
         ],
         rows=rows,
     )

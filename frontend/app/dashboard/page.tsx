@@ -100,10 +100,10 @@ export default function DashboardPage() {
         <StatLink href="/purchase-orders" label="Purchase orders" value={summary.total_pos} />
         <StatLink href="/po-lines" label="PO lines" value={summary.total_po_lines} />
         <Link
-          href="/po-lines"
+          href="/purchase-orders"
           className="flex flex-col justify-center gap-1 p-4 transition-colors hover:bg-surface-tint"
         >
-          <span className="text-xs text-muted">All lines &amp; POs</span>
+          <span className="text-xs text-muted">All purchase orders</span>
           <span className="font-display text-[17px] font-semibold text-accent">View all &rarr;</span>
         </Link>
       </div>

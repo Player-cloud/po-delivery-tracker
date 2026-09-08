@@ -40,7 +40,7 @@ The dark strip under the menu is always there, on every screen:
 - **overdue** — lines past their promised date, not yet delivered
 - **due today** — promised for today
 - **this week** — promised within the next 7 days
-- **reminders daily 07:00 UTC** — when the reminder emails go out
+- **reminders daily 10:00 UK** — when the reminder emails go out
 - Press **`/`** anywhere to jump straight to the PO Lines search box.
 
 It's a glance-and-go summary. The numbers update as you move around.
@@ -109,7 +109,7 @@ stays, with the reason recorded). This keeps a clean audit trail.
 
 ## Reminder emails
 
-- Sent once a day at **07:00 UTC**.
+- Sent once a day at **10:00 UK time** (09:00 UTC in summer, 10:00 UTC in winter).
 - The **assigned person** gets them — for lines coming due (on the
   thresholds an administrator sets) and for anything overdue, daily until
   it's delivered.

@@ -112,7 +112,10 @@ gh workflow run "Keep backend warm"
 gh run watch
 ```
 
-Adjust the reminder time in `.github/workflows/reminders.yml` (`cron:` is UTC).
+Reminders go out at **10:00 UK time**. `.github/workflows/reminders.yml` fires at
+09:00 and 10:00 UTC and the job no-ops unless it's currently 10:00 in
+`Europe/London` (so it lands right in both BST and GMT). To change the target
+time, edit both the `cron:` lines and the `"10"` hour check in that workflow.
 
 ---
 

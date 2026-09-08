@@ -9,15 +9,19 @@
 #   BACKEND_BASE_URL   e.g. https://po-tracker-api.onrender.com   (no trailing slash)
 #   CRON_SECRET        must match the backend's CRON_SECRET env var
 #
-# GitHub cron is UTC and may lag the scheduled minute by a few minutes — fine
-# for a once-a-day job. Adjust the time below to suit the team's timezone.
+# Target send time is 10:00 UK local (Europe/London). GitHub cron is UTC only
+# and does no DST, so we fire at BOTH 09:00 and 10:00 UTC and the job itself
+# no-ops unless it's currently 10:00 in London — that's 09:00 UTC under BST
+# (summer) and 10:00 UTC under GMT (winter). The backend's per-day de-dup log
+# makes the "wrong" run harmless anyway. GitHub cron can lag the minute by a
+# few minutes — fine for a once-a-day job.
 
 name: Daily PO reminders
 
 on:
   schedule:
-    - cron: "0 7 * * *" # 07:00 UTC daily
-  workflow_dispatch: {} # allow a manual run from the Actions tab
+    - cron: "0 9,10 * * *" # 09:00 & 10:00 UTC — the job keeps only the 10:00 London one
+  workflow_dispatch: {} # allow a manual run from the Actions tab (skips the time gate)
 
 concurrency:
   group: po-reminders
@@ -27,7 +31,18 @@ jobs:
   run-reminders:
     runs-on: ubuntu-latest
     steps:
+      - name: Only continue at 10:00 UK time
+        if: github.event_name == 'schedule'
+        run: |
+          hour=$(TZ="Europe/London" date +%H)
+          echo "London hour is ${hour}"
+          if [ "${hour}" != "10" ]; then
+            echo "Not 10:00 in London — skipping this run."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
       - name: Trigger reminder run
+        if: env.SKIP != '1'
         env:
           BACKEND_BASE_URL: ${{ secrets.BACKEND_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

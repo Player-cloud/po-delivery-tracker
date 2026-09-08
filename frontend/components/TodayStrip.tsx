@@ -74,7 +74,7 @@ export default function TodayStrip() {
           <span className="text-strip-faint">loading…</span>
         )}
         <span className="hidden shrink-0 whitespace-nowrap text-strip-faint md:inline">
-          reminders daily 07:00 UTC
+          reminders daily 10:00 UK
         </span>
         <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap text-strip-faint lg:flex">
           <kbd className="rounded border border-strip-faint/50 px-1.5 py-0.5 text-[11px]">/</kbd>

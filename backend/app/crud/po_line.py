@@ -58,6 +58,7 @@ def list_po_lines(
     priority: str | None = None,
     due_within: int | None = None,
     purchase_order_id: int | None = None,
+    po_status: str | None = None,
 ) -> list[POLine]:
     stmt = select(POLine).join(POLine.purchase_order)
     stmt = _visible_to(stmt, current_user)
@@ -72,6 +73,8 @@ def list_po_lines(
         stmt = stmt.where(POLine.priority == priority)
     if purchase_order_id is not None:
         stmt = stmt.where(POLine.purchase_order_id == purchase_order_id)
+    if po_status:
+        stmt = stmt.where(PurchaseOrder.status == po_status)
 
     stmt = stmt.order_by(POLine.promised_delivery.asc())
     rows = list(db.scalars(stmt))

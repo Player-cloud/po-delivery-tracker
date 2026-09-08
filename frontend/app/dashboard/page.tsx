@@ -29,12 +29,12 @@ type Summary = {
   due_1_30: number;
 };
 
-// Single-stat cards, each linking to the matching filtered list.
+// Single-stat cards — every one opens the PO Lines list, filtered.
 const STATS: { key: keyof Summary; label: string; href: string; tone?: "danger" }[] = [
   { key: "due_1_30", label: "Due in 1–30 days", href: "/po-lines?due_within=30" },
   { key: "overdue", label: "Overdue", href: "/po-lines?status=Overdue", tone: "danger" },
-  { key: "pos_delivered", label: "POs delivered", href: "/purchase-orders?status=delivered" },
-  { key: "pos_closed", label: "POs closed", href: "/purchase-orders?status=closed" },
+  { key: "pos_delivered", label: "Delivered POs", href: "/po-lines?po_status=delivered" },
+  { key: "pos_closed", label: "Closed POs", href: "/po-lines?po_status=closed" },
   { key: "high_priority", label: "High priority", href: "/po-lines?priority=high" },
 ];
 
@@ -93,19 +93,10 @@ export default function DashboardPage() {
 
       <GettingStarted onStartTour={() => setTourOpen(true)} />
 
-      {/* Combined "purchase orders" card — each part links to its own list. */}
-      <div
-        className={`animate-rise ${card} grid grid-cols-3 divide-x divide-line overflow-hidden`}
-      >
-        <StatLink href="/purchase-orders" label="Purchase orders" value={summary.total_pos} />
+      {/* Totals — both open the full PO Lines list. */}
+      <div className={`animate-rise ${card} grid grid-cols-2 divide-x divide-line overflow-hidden`}>
+        <StatLink href="/po-lines" label="Purchase orders" value={summary.total_pos} />
         <StatLink href="/po-lines" label="PO lines" value={summary.total_po_lines} />
-        <Link
-          href="/purchase-orders"
-          className="flex flex-col justify-center gap-1 p-4 transition-colors hover:bg-surface-tint"
-        >
-          <span className="text-xs text-muted">All purchase orders</span>
-          <span className="font-display text-[17px] font-semibold text-accent">View all &rarr;</span>
-        </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">

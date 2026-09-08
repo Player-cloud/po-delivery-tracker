@@ -31,6 +31,7 @@ def list_po_lines(
     priority: str | None = None,
     due_within: int | None = Query(default=None, ge=1),
     purchase_order_id: int | None = None,
+    po_status: str | None = Query(default=None, pattern="^(open|delivered|closed|cancelled)$"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -43,6 +44,7 @@ def list_po_lines(
         priority=priority,
         due_within=due_within,
         purchase_order_id=purchase_order_id,
+        po_status=po_status,
     )
 
 

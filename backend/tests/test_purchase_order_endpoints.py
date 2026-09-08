@@ -186,3 +186,14 @@ class TestLineFilters:
         partial = client.get("/api/v1/po-lines?delivery_status=partial").json()
         assert [l["po_number"] for l in partial] == ["PO-920"]
         assert partial[0]["delivery_status"] == DeliveryStatus.PARTIAL.value
+
+    def test_po_status_filter(self, client, manager):
+        # PO-930: single line, mark it complete -> PO auto-Delivered
+        line = _add_line(client, manager, "PO-930", 1)
+        client.put(f"/api/v1/po-lines/{line['id']}", json={"delivery_status": "complete"})
+        _add_line(client, manager, "PO-931", 1)  # stays open
+
+        delivered = client.get("/api/v1/po-lines?po_status=delivered").json()
+        assert {l["po_number"] for l in delivered} == {"PO-930"}
+        open_lines = client.get("/api/v1/po-lines?po_status=open").json()
+        assert {l["po_number"] for l in open_lines} == {"PO-931"}

@@ -29,6 +29,7 @@ function POLines() {
   const dueWithin = params.get("due_within");
   const deliveryStatusParam = params.get("delivery_status");
   const priorityParam = params.get("priority");
+  const poStatusParam = params.get("po_status");
   const searchRef = useRef<HTMLInputElement>(null);
 
   const [lines, setLines] = useState<POLine[]>([]);
@@ -55,12 +56,13 @@ function POLines() {
     if (dueWithin) p.set("due_within", dueWithin);
     if (deliveryStatusParam) p.set("delivery_status", deliveryStatusParam);
     if (priorityParam) p.set("priority", priorityParam);
+    if (poStatusParam) p.set("po_status", poStatusParam);
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [status, debouncedSearch, dueWithin, deliveryStatusParam, priorityParam]);
+  }, [status, debouncedSearch, dueWithin, deliveryStatusParam, priorityParam, poStatusParam]);
 
   const loading = loadedQuery !== query;
-  const drilled = !!dueWithin || !!deliveryStatusParam || !!priorityParam;
+  const drilled = !!dueWithin || !!deliveryStatusParam || !!priorityParam || !!poStatusParam;
   const filtered = !!status || !!debouncedSearch || drilled;
 
   useEffect(() => {
@@ -91,7 +93,9 @@ function POLines() {
       ? `Delivery: ${deliveryStatusParam.replace("_", " ")}`
       : priorityParam
         ? `Priority: ${priorityParam}`
-        : "";
+        : poStatusParam
+          ? `${poStatusParam[0].toUpperCase() + poStatusParam.slice(1)} POs`
+          : "";
 
   return (
     <div className={`${page} flex flex-col gap-4`}>

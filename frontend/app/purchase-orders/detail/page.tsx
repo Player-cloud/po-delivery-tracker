@@ -76,8 +76,8 @@ function Detail() {
   return (
     <div className={`${page} flex flex-col gap-5`}>
       <div>
-        <Link href="/purchase-orders" className="text-[12.5px] text-accent hover:underline">
-          ← All purchase orders
+        <Link href="/po-lines" className="text-[12.5px] text-accent hover:underline">
+          ← All PO lines
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className={h1}>PO {po.po_number}</h1>

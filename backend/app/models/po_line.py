@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    String,
     Text,
     UniqueConstraint,
     case,
@@ -69,6 +70,8 @@ class POLine(Base):
     )
     po_line: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # Free-text "what this line item is".
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     issue_date: Mapped[date] = mapped_column(Date, nullable=False)

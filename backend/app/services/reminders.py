@@ -139,11 +139,14 @@ def _build_message(line: POLine, decision: ReminderDecision, recipient: str) -> 
 
     first_name = getattr(line.assigned_to, "first_name", None) if line.assigned_to else None
     greeting = f"Hi {first_name},\n\n" if first_name else ""
+    description = getattr(line, "description", None)
+    item_line = f"  Item:               {description}\n" if description else ""
     text_body = (
         f"{greeting}"
         f"Purchase order {line.po_number}, line {line.po_line} {decision.phrase}.\n\n"
         f"  PO Number:          {line.po_number}\n"
         f"  PO Line:            {line.po_line}\n"
+        f"{item_line}"
         f"  Issue Date:         {line.issue_date.isoformat()}\n"
         f"  Promised Delivery:  {line.promised_delivery.isoformat()}\n"
         f"  Lead Time (days):   {line.lead_time_days if line.lead_time_days is not None else '-'}\n"

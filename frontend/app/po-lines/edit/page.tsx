@@ -13,6 +13,7 @@ import type { AssignableUser, DeliveryStatus } from "@/lib/types";
 type FormState = {
   po_number: string;
   po_line: number;
+  description: string;
   promised_delivery: string;
   assigned_to_id: string;
   priority: string;
@@ -65,6 +66,7 @@ function EditPOLine() {
           setForm({
             po_number: data.po_number,
             po_line: data.po_line,
+            description: data.description || "",
             promised_delivery: data.promised_delivery,
             assigned_to_id: data.assigned_to_id ? String(data.assigned_to_id) : "",
             priority: data.priority || "",
@@ -94,6 +96,7 @@ function EditPOLine() {
     const response = await apiFetch(`/po-lines/${id}`, {
       method: "PUT",
       body: JSON.stringify({
+        description: form.description.trim() || null,
         promised_delivery: form.promised_delivery,
         assigned_to_id: Number(form.assigned_to_id),
         priority: form.priority || null,
@@ -126,6 +129,16 @@ function EditPOLine() {
       </div>
 
       <form onSubmit={handleSubmit} className={`${card} flex flex-col gap-4 p-6`}>
+        <Field label="Description" hint="What this line item is.">
+          <input
+            value={form.description}
+            onChange={(e) => updateField("description", e.target.value)}
+            className={control}
+            placeholder="e.g. 10x M6 bolts, zinc"
+            maxLength={500}
+          />
+        </Field>
+
         <Field label="Promised delivery">
           <input
             type="date"

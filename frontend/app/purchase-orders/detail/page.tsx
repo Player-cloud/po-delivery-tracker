@@ -138,6 +138,7 @@ function Detail() {
                   <span className="font-semibold">Line {l.po_line}</span>
                   <DeliveryPill status={l.delivery_status} />
                 </div>
+                {l.description && <p className="text-[12.5px] text-muted">{l.description}</p>}
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px] text-muted">
                   <div>
                     <dt className="text-faint">Promised</dt>
@@ -162,10 +163,11 @@ function Detail() {
           {/* Tablet+ : table */}
           <div className={`${card} hidden overflow-hidden md:block`}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-left text-[12.5px]">
+              <table className="w-full min-w-[680px] text-left text-[12.5px]">
                 <thead>
                   <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
                     <th className="px-5 py-3 font-medium">Line</th>
+                    <th className="px-5 py-3 font-medium">Description</th>
                     <th className="px-5 py-3 font-medium">Promised</th>
                     <th className="px-5 py-3 font-medium">Remaining</th>
                     <th className="px-5 py-3 font-medium">Delivery</th>
@@ -178,6 +180,9 @@ function Detail() {
                   {po.lines.map((l) => (
                     <tr key={l.id} className="border-t border-line/70 hover:bg-surface-tint">
                       <td className="px-5 py-3 font-mono font-semibold">{l.po_line}</td>
+                      <td className="max-w-[220px] truncate px-5 py-3 text-muted">
+                        {l.description || "—"}
+                      </td>
                       <td className="px-5 py-3 font-mono text-muted">{l.promised_delivery}</td>
                       <td className="px-5 py-3 text-muted">
                         {l.delivered ? "—" : daysRemainingLabel(l.days_remaining)}

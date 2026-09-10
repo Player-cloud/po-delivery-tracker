@@ -13,6 +13,7 @@ import type { AssignableUser, DeliveryStatus } from "@/lib/types";
 type FormState = {
   po_number: string;
   po_line: string;
+  description: string;
   issue_date: string;
   promised_delivery: string;
   delivery_status: DeliveryStatus;
@@ -24,6 +25,7 @@ type FormState = {
 const initialForm: FormState = {
   po_number: "",
   po_line: "",
+  description: "",
   issue_date: "",
   promised_delivery: "",
   delivery_status: "not_delivered",
@@ -80,6 +82,7 @@ function NewPOLine() {
       body: JSON.stringify({
         po_number: form.po_number,
         po_line: Number(form.po_line),
+        description: form.description.trim() || null,
         issue_date: form.issue_date,
         promised_delivery: form.promised_delivery,
         delivery_status: form.delivery_status,
@@ -122,6 +125,16 @@ function NewPOLine() {
             />
           </Field>
         </div>
+
+        <Field label="Description" hint="What this line item is.">
+          <input
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            className={control}
+            placeholder="e.g. 10x M6 bolts, zinc"
+            maxLength={500}
+          />
+        </Field>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Issue date">

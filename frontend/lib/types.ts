@@ -23,6 +23,7 @@ export type POLine = {
   purchase_order_id: number;
   po_number: string;
   po_line: number;
+  description: string | null;
   quantity: number;
   issue_date: string;
   promised_delivery: string;

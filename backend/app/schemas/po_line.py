@@ -24,6 +24,7 @@ class POLineBase(BaseModel):
     # exists yet, creating a line makes one (see crud.po_line.create_po_line).
     po_number: str
     po_line: int
+    description: str | None = None
     quantity: int = 1
     issue_date: date
     promised_delivery: date
@@ -67,6 +68,7 @@ class POLineUpdate(BaseModel):
     database NOT NULL constraint.
     """
 
+    description: str | None = None
     quantity: int | None = None
     issue_date: date | None = None
     promised_delivery: date | None = None
@@ -103,6 +105,7 @@ class POLineOut(BaseModel):
     purchase_order_id: int
     po_number: str  # from the parent PO (model property)
     po_line: int
+    description: str | None
     quantity: int
     issue_date: date
     promised_delivery: date

@@ -186,6 +186,9 @@ function POLines() {
                   <div className="min-w-0">
                     <span className="font-semibold">{line.po_number}</span>
                     <span className="ml-1.5 font-mono text-faint">· {line.po_line}</span>
+                    {line.description && (
+                      <p className="truncate text-[12.5px] text-muted">{line.description}</p>
+                    )}
                   </div>
                   <StatusBadge delivered={line.delivered} days_remaining={line.days_remaining} />
                 </div>
@@ -227,11 +230,12 @@ function POLines() {
           {/* Tablet landscape and up: table */}
           <div className={`${card} hidden overflow-hidden md:block`}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-[12.5px]">
+              <table className="w-full min-w-[780px] text-left text-[12.5px]">
                 <thead>
                   <tr className="border-b border-line text-[10.5px] uppercase tracking-[0.04em] text-faint">
                     <th className="px-5 py-3 font-medium">PO Number</th>
                     <th className="px-5 py-3 font-medium">Line</th>
+                    <th className="px-5 py-3 font-medium">Description</th>
                     <th className="px-5 py-3 font-medium">Promised</th>
                     <th className="px-5 py-3 font-medium">Remaining</th>
                     <th className="px-5 py-3 font-medium">Delivery</th>
@@ -252,6 +256,9 @@ function POLines() {
                         </Link>
                       </td>
                       <td className="px-5 py-3 font-mono">{line.po_line}</td>
+                      <td className="max-w-[220px] truncate px-5 py-3 text-muted">
+                        {line.description || "—"}
+                      </td>
                       <td className="px-5 py-3 font-mono text-muted">{line.promised_delivery}</td>
                       <td className="px-5 py-3 text-muted">
                         {line.delivered ? "—" : daysRemainingLabel(line.days_remaining)}

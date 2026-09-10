@@ -48,6 +48,26 @@ class TestGetOrCreate:
         line = _line(db, users["alice"], po_number="PO-502", po_line=1, qty=7)
         assert line.quantity == 7
 
+    def test_description_round_trips(self, db, users):
+        alice = users["alice"]
+        line = po_line_crud.create_po_line(
+            db,
+            POLineCreate(
+                po_number="PO-503",
+                po_line=1,
+                description="10x M6 bolts, zinc",
+                issue_date=TODAY_ISO,
+                promised_delivery=FUTURE,
+                assigned_to_id=alice.id,
+            ),
+            alice,
+        )
+        assert line.description == "10x M6 bolts, zinc"
+        updated = po_line_crud.update_po_line(
+            db, line, POLineUpdate(description="10x M6 bolts, stainless"), alice
+        )
+        assert updated.description == "10x M6 bolts, stainless"
+
 
 class TestAutoStatus:
     def test_po_delivered_when_all_lines_complete(self, db, users):

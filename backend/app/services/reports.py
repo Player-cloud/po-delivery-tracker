@@ -283,6 +283,7 @@ def _all_lines(lines: list[POLine], f: ReportFilters) -> Report:
             {
                 "po_number": l.po_number,
                 "po_line": l.po_line,
+                "description": l.description or "",
                 "po_status": l.purchase_order.status.value.title() if l.purchase_order else "",
                 "promised_delivery": l.promised_delivery.isoformat(),
                 "remaining": "—" if l.delivered else _remaining_label(l.days_remaining),
@@ -298,6 +299,7 @@ def _all_lines(lines: list[POLine], f: ReportFilters) -> Report:
         columns=[
             {"key": "po_number", "label": "PO"},
             {"key": "po_line", "label": "Line"},
+            {"key": "description", "label": "Description"},
             {"key": "po_status", "label": "PO status"},
             {"key": "promised_delivery", "label": "Promised"},
             {"key": "remaining", "label": "Remaining"},

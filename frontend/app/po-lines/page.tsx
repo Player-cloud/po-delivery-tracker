@@ -153,8 +153,6 @@ function POLines() {
           <option value="">Any PO status</option>
           <option value="open">Pending PO</option>
           <option value="delivered">Delivered PO</option>
-          <option value="closed">Closed PO</option>
-          <option value="cancelled">Cancelled PO</option>
         </select>
         {(status || poStatus || search) && (
           <button

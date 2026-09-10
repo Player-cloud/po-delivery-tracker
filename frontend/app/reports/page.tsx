@@ -38,7 +38,7 @@ const EMPTY: Filters = {
 const REPORTS: ReportMeta[] = [
   { name: "all_lines", label: "All PO lines", description: "Every line in the system — filter it however you like, or not at all." },
   { name: "overdue", label: "Overdue lines", description: "Every open line past its promised date." },
-  { name: "delivered", label: "Deliveries", description: "Lines completed within a date range." },
+  { name: "deliveries", label: "Delivered lines", description: "Lines completed within a date range." },
   { name: "on_time", label: "On-time delivery", description: "On-time vs late completions, by assignee." },
   { name: "by_assignee", label: "Lines by assignee", description: "Line counts per person, by delivery status." },
   { name: "by_status", label: "Lines by delivery status", description: "How lines split across delivery states." },
@@ -244,8 +244,6 @@ export default function ReportsPage() {
             <option value="">Any</option>
             <option value="open">Pending</option>
             <option value="delivered">Delivered</option>
-            <option value="closed">Closed</option>
-            <option value="cancelled">Cancelled</option>
           </select>
         </label>
         <button type="submit" disabled={!filtersDirty} className={btnPrimary}>

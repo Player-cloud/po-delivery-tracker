@@ -197,3 +197,17 @@ class TestLineFilters:
         assert {l["po_number"] for l in delivered} == {"PO-930"}
         open_lines = client.get("/api/v1/po-lines?po_status=open").json()
         assert {l["po_number"] for l in open_lines} == {"PO-931"}
+
+    def test_search_matches_po_number_or_line(self, client, manager):
+        _add_line(client, manager, "PO-940", 1)
+        _add_line(client, manager, "PO-940", 2)
+        _add_line(client, manager, "PO-941", 2)
+
+        by_po = client.get("/api/v1/po-lines?search=PO-940").json()
+        assert {(l["po_number"], l["po_line"]) for l in by_po} == {("PO-940", 1), ("PO-940", 2)}
+
+        by_line = client.get("/api/v1/po-lines?search=2").json()
+        assert {(l["po_number"], l["po_line"]) for l in by_line} == {
+            ("PO-940", 2),
+            ("PO-941", 2),
+        }

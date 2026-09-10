@@ -124,11 +124,11 @@ function POLines() {
           <input
             ref={searchRef}
             type="search"
-            placeholder="Search PO number…"
+            placeholder="Search PO number or line…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-44 bg-transparent text-sm outline-none placeholder:text-faint sm:w-56"
-            aria-label="Search PO number"
+            aria-label="Search PO number or line number"
           />
         </div>
         <select

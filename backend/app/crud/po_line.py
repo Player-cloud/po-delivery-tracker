@@ -5,7 +5,7 @@ stay thin and just call into here — keeps business rules in one testable place
 
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.crud.purchase_order import get_or_create_by_number
@@ -66,7 +66,12 @@ def list_po_lines(
     if status_filter:
         stmt = stmt.where(POLine.status == status_filter)
     if search:
-        stmt = stmt.where(PurchaseOrder.po_number.ilike(f"%{search}%"))
+        term = search.strip()
+        conds = [PurchaseOrder.po_number.ilike(f"%{term}%")]
+        if term.isdigit():
+            # bare number -> also match the line number (PO Lines search box)
+            conds.append(POLine.po_line == int(term))
+        stmt = stmt.where(or_(*conds))
     if delivery_status:
         stmt = stmt.where(POLine.delivery_status == delivery_status)
     if priority:

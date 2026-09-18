@@ -6,7 +6,7 @@ import { getToken, subscribe } from "@/lib/auth";
 
 // Routes a logged-out visitor is allowed to see. Everything else bounces to
 // /login — the app is a static export, so this is the only auth gate there is.
-const PUBLIC = new Set(["/login"]);
+const PUBLIC = new Set(["/login", "/forgot-password", "/reset-password"]);
 
 // `false` during SSR / the first hydration render, `true` once we're on the
 // client. Guards against acting on the (always-null) server auth snapshot.

@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     login_rate_limit: str = "10/minute"
     # Minimum length for new passwords (also enforced by scripts.seed_admin).
     password_min_length: int = 10
+    # "Forgot password" links: how long one stays valid, and the per-IP cap on
+    # requesting them (slowapi syntax; blank disables the limiter).
+    password_reset_expire_minutes: int = 30
+    forgot_password_rate_limit: str = "5/hour"
 
     # --- File storage (attachments, M3) ---
     storage_backend: str = "local"  # local | s3

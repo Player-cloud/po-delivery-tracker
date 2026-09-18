@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
@@ -11,7 +11,8 @@ def get_user(db: Session, user_id: int) -> User | None:
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
-    return db.scalar(select(User).where(User.email == email))
+    # Case-insensitive: phones capitalise the first letter of an email field.
+    return db.scalar(select(User).where(func.lower(User.email) == email.strip().lower()))
 
 
 def list_users(db: Session) -> list[User]:

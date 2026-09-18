@@ -13,6 +13,7 @@ from app.models.attachment import Attachment  # noqa: F401
 from app.models.configuration import Configuration  # noqa: F401
 from app.models.deletion_request import DeletionRequest  # noqa: F401
 from app.models.notification_history import NotificationHistory  # noqa: F401
+from app.models.password_reset_token import PasswordResetToken  # noqa: F401
 from app.models.po_line import POLine  # noqa: F401
 from app.models.purchase_order import PurchaseOrder  # noqa: F401
 from app.models.user import User  # noqa: F401

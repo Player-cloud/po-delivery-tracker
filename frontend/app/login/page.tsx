@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 import { saveToken } from "@/lib/auth";
@@ -72,6 +73,10 @@ export default function LoginPage() {
         <button type="submit" disabled={submitting} className={`${btnPrimary} mt-1`}>
           {submitting ? "Signing in…" : "Sign in"}
         </button>
+
+        <Link href="/forgot-password" className="text-center text-[12.5px] text-muted hover:text-accent">
+          Forgot your password?
+        </Link>
       </form>
     </div>
   );

@@ -23,7 +23,12 @@ def list_active_users(db: Session) -> list[User]:
 
 
 def create_user(db: Session, data: UserCreate) -> User:
-    user = User(email=data.email, password_hash=hash_password(data.password), role=data.role)
+    user = User(
+        email=data.email,
+        full_name=(data.full_name or "").strip() or None,
+        password_hash=hash_password(data.password),
+        role=data.role,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)

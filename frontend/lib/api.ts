@@ -39,7 +39,12 @@ export async function login(email: string, password: string): Promise<string> {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
-  if (!res.ok) throw new Error("Login failed — check your email and password");
+  if (!res.ok) {
+    if (res.status === 429) throw new Error("Too many attempts — wait a minute and try again.");
+    if (res.status === 403) throw new Error("This account has been disabled.");
+    if (res.status >= 500) throw new Error("The server had a problem — try again shortly.");
+    throw new Error("Login failed — check your email and password.");
+  }
   const data = await res.json();
   return data.access_token as string;
 }

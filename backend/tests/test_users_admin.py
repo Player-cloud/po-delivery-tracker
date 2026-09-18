@@ -79,3 +79,37 @@ def test_admin_may_still_change_own_password(client, admin):
         client.put(f"/api/v1/users/{admin.id}", json={"password": "newsecret123"}).status_code
         == 200
     )
+
+
+def test_created_user_keeps_full_name(client):
+    r = client.post(
+        "/api/v1/users",
+        json={
+            "email": "named@corp.example",
+            "password": "Sup3rSecret!",
+            "role": "staff",
+            "full_name": "Nora Named",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json()["full_name"] == "Nora Named"
+
+
+def test_reset_password_takes_effect_at_login(client):
+    """Temp password works, an admin reset swaps it for the new one."""
+    email = "reset@corp.example"
+    r = client.post(
+        "/api/v1/users", json={"email": email, "password": "TempPass#12345", "role": "staff"}
+    )
+    uid = r.json()["id"]
+
+    def login(pw):
+        return client.post("/api/v1/auth/login", data={"username": email, "password": pw})
+
+    assert login("TempPass#12345").status_code == 200
+    assert (
+        client.put(f"/api/v1/users/{uid}", json={"password": "Brand-new-pass-99"}).status_code
+        == 200
+    )
+    assert login("Brand-new-pass-99").status_code == 200
+    assert login("TempPass#12345").status_code == 401

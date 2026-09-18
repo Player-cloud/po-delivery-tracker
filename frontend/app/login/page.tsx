@@ -20,8 +20,14 @@ export default function LoginPage() {
     try {
       saveToken(await login(email, password));
       router.push("/dashboard");
-    } catch {
-      setError("Login failed — check your email and password.");
+    } catch (err) {
+      setError(
+        err instanceof TypeError
+          ? "Can't reach the server — check your connection and try again."
+          : err instanceof Error
+            ? err.message
+            : "Login failed — check your email and password.",
+      );
       setSubmitting(false);
     }
   }

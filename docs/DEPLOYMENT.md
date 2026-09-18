@@ -49,7 +49,7 @@ Attachments are private — the backend streams them to authorized users; the bu
    (No domain? You can send from `onboarding@resend.dev` for testing, but real delivery needs a verified domain.)
 3. **API Keys → Create** → `RESEND_API_KEY`.
 4. `SMTP_FROM_ADDRESS` = an address on the verified domain, e.g. `po-tracker@yourcompany.com`.
-   Reminder emails **and** password-reset emails both go out from this address, and the reset link is built from `FRONTEND_BASE_URL` � so both must be set correctly or "Forgot password" will silently deliver nothing (the API always replies "if that email has an account�" and logs the send failure).
+   Reminder emails **and** password-reset emails both go out from this address, and the reset link is built from `FRONTEND_BASE_URL` — so both must be set correctly or "Forgot password" will silently deliver nothing (the API always replies "if that email has an account…" and logs the send failure).
 5. Decide `REMINDER_ESCALATION_EMAIL` — where overdue lines escalate after 7 days (§14 Q3).
 
 ---
